@@ -211,7 +211,7 @@ def make_downloadable_summary(df: pd.DataFrame, target_col: str) -> pd.DataFrame
 # -------------------------
 st.title("📊 AI Business Intelligence Dashboard")
 st.markdown("### Smart insights, interactive analysis, and machine learning forecasts")
-st.caption("Built by Abdoulie Bah")
+st.caption("Built by Abdoulie J Bah")
 
 st.info(
     "Upload a CSV file or use demo mode. "
