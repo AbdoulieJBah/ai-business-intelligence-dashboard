@@ -249,6 +249,8 @@ if uploaded_file is not None:
             df = pd.read_excel(uploaded_file)
 
         st.success("File uploaded successfully!")
+        
+        df_raw = df 
 
     except Exception as e:
         st.error(f"Error reading file: {e}")
