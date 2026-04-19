@@ -461,10 +461,9 @@ if df_raw is None:
 
 df_raw = normalize_columns(df_raw)
 
-df_raw["generated_date"] = pd.date_range(
-    start="2023-01-01",
-    periods=len(df_raw),
-    freq="D"
+df_raw["generated_date"] = pd.date_range(start="2024-01-01", periods=len(df), freq="D")
+time_col = "generated_date"
+    
 )
 # -----------------------------
 # NLP preparation
@@ -526,6 +525,17 @@ category_candidates = suggest_category_columns(
     df_raw,
     exclude_cols=[c for c in [suggested_metric, detected_date_col, suggested_profit, suggested_cost, suggested_quantity] if c]
 )
+
+st.subheader("🧠 Business Insight")
+
+if growth_pct is not None:
+    if growth_pct > 0:
+        st.success("Business performance is improving over time.")
+    else:
+        st.error("Business performance is declining and needs attention.")
+
+if anomaly_pct > 5:
+    st.warning("High anomaly rate detected — investigate data quality or unusual events.")
 
 # -----------------------------
 # Sidebar config
@@ -735,7 +745,18 @@ for line in generate_auto_summary(df, metric_col, category_col):
 # -----------------------------
 st.subheader("💡 Recommendations")
 
-for rec in recommendation_text(latest_metric, avg_metric, slope, metric_col):
+recommendations = recommendation_text(latest_metric, avg_metric, slope, metric_col)
+
+if growth_pct is not None:
+    if slope is not None:
+        if slope > 0 and growth_pct > 0:
+            recommendations.append("Strong upward trend confirmed by both recent growth and forecast direction.")
+        elif slope < 0 and growth_pct < 0:
+            recommendations.append("Consistent downward trend detected in both recent growth and forecast direction.")
+        else:
+            recommendations.append("Mixed signals detected: recent growth and forecast trend are not fully aligned.")
+
+for rec in recommendations:
     st.write(f"- {rec}")
 
 if category_col != "None" and category_col in df.columns:
@@ -745,8 +766,12 @@ if category_col != "None" and category_col in df.columns:
         st.write(f"- Lowest-performing {category_col}: **{grouped.index[-1]}**")
 
 if margin_available:
-    low_margin_rows = df["Computed_Margin_Percent"].lt(df["Computed_Margin_Percent"].mean(skipna=True)).sum()
-    st.write(f"- {low_margin_rows} rows are below the average margin. Review pricing or cost structure where relevant.")
+    low_margin_rows = df["Computed_Margin_Percent"].lt(
+        df["Computed_Margin_Percent"].mean(skipna=True)
+    ).sum()
+    st.write(
+        f"- {low_margin_rows} rows are below the average margin. Review pricing or cost structure where relevant."
+    )
 
 if prediction is not None:
     st.caption("Forecast based on a simple linear regression trend model.")
@@ -816,6 +841,28 @@ anomaly_count = int(anomaly_df["is_anomaly"].sum())
 if anomaly_count > 0:
     st.warning(f"{anomaly_count} unusual records were detected in {metric_col}.")
     st.dataframe(anomaly_df[anomaly_df["is_anomaly"]].head(20), use_container_width=True)
+else:
+    st.success("No major anomalies detected.")
+
+# -----------------------------
+# Anomaly Detection
+# -----------------------------
+st.subheader("🚨 Anomaly Detection")
+
+anomaly_df = detect_anomalies_iqr(df, metric_col)
+
+anomaly_count = int(anomaly_df["is_anomaly"].sum())
+anomaly_pct = (anomaly_count / len(anomaly_df)) * 100 if len(anomaly_df) > 0 else 0
+
+if anomaly_count > 0:
+    st.warning(
+        f"{anomaly_count} unusual records were detected in {metric_col} "
+        f"({anomaly_pct:.2f}% of data)."
+    )
+    st.dataframe(
+        anomaly_df[anomaly_df["is_anomaly"]].head(20),
+        use_container_width=True
+    )
 else:
     st.success("No major anomalies detected.")
 
