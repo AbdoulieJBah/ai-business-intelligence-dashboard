@@ -583,6 +583,7 @@ if profit_col != "None" and profit_col in df.columns:
 # --- Display insights
 for i, insight in enumerate(insights):
     st.write(f"🔹 {insight}")
+    st.success("These insights are automatically generated using statistical analysis and trend detection.")
 # -----------------------------
 # Visual analysis
 # -----------------------------
