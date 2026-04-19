@@ -529,7 +529,60 @@ if prediction is not None:
     st.caption("Forecast based on a simple linear regression trend model.")
 
 st.divider()
+# -----------------------------
+# AI Insights
+# -----------------------------
+st.subheader("🤖 AI Insights")
 
+insights = []
+
+# --- Trend insight
+if slope is not None:
+    if slope > 0:
+        insights.append(f"{metric_col} is showing a consistent upward trend, indicating business growth.")
+    elif slope < 0:
+        insights.append(f"{metric_col} is declining over time, which may require immediate attention.")
+    else:
+        insights.append(f"{metric_col} trend is stable with no significant change.")
+
+# --- Growth insight
+if growth_pct is not None:
+    if growth_pct > 10:
+        insights.append(f"Strong growth detected (+{growth_pct:.2f}%). The business is expanding well.")
+    elif growth_pct < -10:
+        insights.append(f"Significant decline detected ({growth_pct:.2f}%). Investigate potential issues.")
+    else:
+        insights.append(f"Growth is relatively stable ({growth_pct:.2f}%).")
+
+# --- Volatility insight
+std_dev = df[metric_col].std()
+if std_dev > avg_metric * 0.5:
+    insights.append("High variability detected in performance, indicating inconsistent results.")
+else:
+    insights.append("Performance is relatively stable with low variability.")
+
+# --- Category insight
+if category_col != "None" and category_col in df.columns:
+    if df[category_col].dtype == "object":
+        grouped = df.groupby(category_col)[metric_col].sum().sort_values(ascending=False)
+
+        if len(grouped) > 1:
+            best = grouped.index[0]
+            worst = grouped.index[-1]
+
+            insights.append(f"{best} is the top-performing {category_col}, while {worst} is underperforming.")
+
+# --- Profit insight
+if profit_col != "None" and profit_col in df.columns:
+    total_profit = df[profit_col].sum()
+    if total_profit > 0:
+        insights.append("The business is overall profitable.")
+    else:
+        insights.append("The business is operating at a loss.")
+
+# --- Display insights
+for i, insight in enumerate(insights):
+    st.write(f"🔹 {insight}")
 # -----------------------------
 # Visual analysis
 # -----------------------------
