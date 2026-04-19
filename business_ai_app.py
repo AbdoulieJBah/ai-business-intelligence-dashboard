@@ -412,10 +412,10 @@ if profit_col != "None" and profit_col in df.columns:
 # -----------------------------
 st.sidebar.header("Filters")
 
-# Better date filter
 if has_real_date:
     min_date = df[time_col].min().date()
     max_date = df[time_col].max().date()
+
     selected_dates = st.sidebar.date_input(
         "Filter date range",
         value=(min_date, max_date),
@@ -426,8 +426,9 @@ if has_real_date:
     if isinstance(selected_dates, tuple) and len(selected_dates) == 2:
         start_date, end_date = selected_dates
         df = df[(df[time_col].dt.date >= start_date) & (df[time_col].dt.date <= end_date)]
+    elif not isinstance(selected_dates, tuple):
+        df = df[df[time_col].dt.date == selected_dates]
 
-# Category filters
 if category_col != "None" and category_col in df.columns:
     vals = sorted(df[category_col].dropna().astype(str).unique().tolist())
     selected_vals = st.sidebar.multiselect(f"Filter {category_col}", vals, default=vals)
@@ -605,23 +606,36 @@ with tab3:
 
 with tab4:
     other_numeric = [c for c in detect_metric_candidates(df) if c != metric_col and c in df.columns]
-    if other_numeric:
-        x_col = st.selectbox("Select numeric X-axis", other_numeric)
-        rel_df = df.copy()
-        rel_df = clean_numeric(rel_df, x_col)
-        rel_df = rel_df.dropna(subset=[x_col, metric_col])
 
-        if not rel_df.empty:
-            # simplified relationship chart without overloaded legend
-            scatter = alt.Chart(rel_df).mark_circle(size=80, opacity=0.65).encode(
-                x=alt.X(f"{x_col}:Q", title=x_col),
-                y=alt.Y(f"{metric_col}:Q", title=metric_col),
-                tooltip=[alt.Tooltip(f"{x_col}:Q", format=".2f"), alt.Tooltip(f"{metric_col}:Q", format=".2f")]
+    if other_numeric:
+        x_col = st.selectbox("Select numeric X-axis", other_numeric, key="relationship_x")
+
+        rel_df = df.copy()
+
+        rel_df[x_col] = pd.to_numeric(rel_df[x_col], errors="coerce")
+        rel_df[metric_col] = pd.to_numeric(rel_df[metric_col], errors="coerce")
+
+        rel_df = rel_df[[x_col, metric_col]].dropna()
+        rel_df = rel_df[np.isfinite(rel_df[x_col]) & np.isfinite(rel_df[metric_col])]
+
+        if not rel_df.empty and len(rel_df) >= 2:
+            chart_df = rel_df.rename(columns={
+                x_col: "x_value",
+                metric_col: "y_value"
+            })
+
+            scatter = alt.Chart(chart_df).mark_circle(size=80, opacity=0.65).encode(
+                x=alt.X("x_value:Q", title=x_col),
+                y=alt.Y("y_value:Q", title=metric_col),
+                tooltip=[
+                    alt.Tooltip("x_value:Q", title=x_col, format=".2f"),
+                    alt.Tooltip("y_value:Q", title=metric_col, format=".2f")
+                ]
             ).properties(height=380)
 
             st.altair_chart(scatter, use_container_width=True)
         else:
-            st.info("No valid rows available for relationship analysis.")
+            st.info("Not enough valid numeric data is available for relationship analysis.")
     else:
         st.info("No extra numeric columns available for relationship analysis.")
 
