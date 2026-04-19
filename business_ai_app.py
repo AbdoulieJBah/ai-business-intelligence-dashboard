@@ -411,7 +411,6 @@ st.title("📊 Universal AI Business Dashboard")
 st.markdown("### Analyze business files with insights, filters, and forecasting")
 st.caption("Built by Abdoulie J Bah")
 st.info("Upload any business dataset (sales, finance, reviews) and get instant AI-powered insights.")
-st.success("Supports sales, finance, and customer review datasets automatically.")
 
 st.write(
     "Upload a CSV or Excel file and let the app automatically detect useful business columns. "
