@@ -3,6 +3,10 @@ import pandas as pd
 import numpy as np
 import altair as alt
 from sklearn.linear_model import LinearRegression
+from collections import Counter
+import re
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.cluster import KMeans
 
 st.set_page_config(
     page_title="Universal AI Business Dashboard",
@@ -237,7 +241,115 @@ def safe_growth_percent(series):
     if first == 0:
         return None
     return ((last - first) / abs(first)) * 100
+    
+def clean_text(text):
+    if pd.isna(text):
+        return ""
+    text = str(text).lower()
+    text = re.sub(r"http\S+|www\S+", "", text)
+    text = re.sub(r"[^a-zA-Z\s]", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
 
+
+basic_stopwords = {
+    "the", "and", "for", "that", "with", "this", "was", "are", "but", "have",
+    "not", "you", "all", "from", "they", "your", "has", "had", "his", "her",
+    "its", "our", "out", "too", "very", "can", "will", "would", "could", "should",
+    "than", "then", "when", "what", "where", "which", "while", "were", "been",
+    "also", "there", "their", "them", "into", "about", "after", "before", "because",
+    "just", "more", "most", "some", "such", "only", "over", "much", "many", "any",
+    "amazon", "product", "products", "item", "items", "buy", "bought", "use", "used",
+    "one", "two", "get", "got", "good", "great"
+}
+
+
+def get_word_counts(text_series, stopwords=None, top_n=15):
+    if stopwords is None:
+        stopwords = set()
+
+    words = []
+    for text in text_series.dropna():
+        cleaned = clean_text(text)
+        words.extend([w for w in cleaned.split() if w not in stopwords and len(w) > 2])
+
+    return Counter(words).most_common(top_n)
+
+
+def simple_sentiment_from_rating(rating):
+    try:
+        rating = float(rating)
+        if rating >= 4:
+            return "Positive"
+        elif rating >= 3:
+            return "Neutral"
+        else:
+            return "Negative"
+    except Exception:
+        return "Unknown"
+
+
+@st.cache_data
+def build_tfidf_keywords(text_series, top_n=20):
+    cleaned_docs = [clean_text(x) for x in text_series.fillna("").astype(str)]
+    cleaned_docs = [doc for doc in cleaned_docs if doc.strip()]
+
+    if len(cleaned_docs) < 3:
+        return pd.DataFrame(columns=["Keyword", "Score"]), None, None
+
+    vectorizer = TfidfVectorizer(
+        stop_words="english",
+        max_features=1000,
+        ngram_range=(1, 2),
+        min_df=2
+    )
+    X = vectorizer.fit_transform(cleaned_docs)
+
+    scores = np.asarray(X.mean(axis=0)).ravel()
+    terms = np.array(vectorizer.get_feature_names_out())
+
+    top_idx = np.argsort(scores)[::-1][:top_n]
+    keyword_df = pd.DataFrame({
+        "Keyword": terms[top_idx],
+        "Score": scores[top_idx]
+    })
+
+    return keyword_df, X, vectorizer
+
+
+@st.cache_data
+def cluster_reviews(text_series, n_clusters=3):
+    cleaned_docs = [clean_text(x) for x in text_series.fillna("").astype(str)]
+    cleaned_docs = [doc for doc in cleaned_docs if doc.strip()]
+
+    if len(cleaned_docs) < max(10, n_clusters):
+        return None, None, None
+
+    vectorizer = TfidfVectorizer(
+        stop_words="english",
+        max_features=1000,
+        ngram_range=(1, 2),
+        min_df=2
+    )
+    X = vectorizer.fit_transform(cleaned_docs)
+
+    kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
+    labels = kmeans.fit_predict(X)
+
+    terms = vectorizer.get_feature_names_out()
+    top_terms_per_cluster = {}
+
+    for i in range(n_clusters):
+        center = kmeans.cluster_centers_[i]
+        top_indices = center.argsort()[::-1][:8]
+        top_terms_per_cluster[i] = [terms[idx] for idx in top_indices]
+
+    clustered_df = pd.DataFrame({
+        "clean_text": cleaned_docs,
+        "cluster": labels
+    })
+
+    return clustered_df, top_terms_per_cluster, vectorizer
 
 # -----------------------------
 # Header
@@ -295,6 +407,27 @@ if df_raw is None:
     st.stop()
 
 df_raw = normalize_columns(df_raw)
+
+# -----------------------------
+# NLP preparation
+# -----------------------------
+text_col = None
+title_col = None
+
+if "review_content" in df_raw.columns:
+    text_col = "review_content"
+elif "about_product" in df_raw.columns:
+    text_col = "about_product"
+
+if "review_title" in df_raw.columns:
+    title_col = "review_title"
+
+if text_col is not None:
+    df_raw["clean_text"] = df_raw[text_col].fillna("").astype(str).apply(clean_text)
+    df_raw["review_length"] = df_raw["clean_text"].apply(lambda x: len(x.split()))
+
+if "rating" in df_raw.columns:
+    df_raw["sentiment_label"] = df_raw["rating"].apply(simple_sentiment_from_rating)
 
 # -----------------------------
 # Health check
@@ -589,13 +722,21 @@ st.success("These insights are automatically generated using statistical analysi
 # -----------------------------
 st.subheader("📈 Visual Analysis")
 
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "Trend",
-    "Distribution",
-    "Category",
-    "Relationship",
-    "Detailed Tables"
-])
+tab_labels = ["Trend", "Distribution", "Category", "Relationship", "Detailed Tables"]
+
+if text_col is not None:
+    tab_labels.append("NLP Insights")
+
+tabs = st.tabs(tab_labels)
+
+tab1 = tabs[0]
+tab2 = tabs[1]
+tab3 = tabs[2]
+tab4 = tabs[3]
+tab5 = tabs[4]
+
+if text_col is not None:
+    tab6 = tabs[5]
 
 with tab1:
     trend_df = df[[time_col, metric_col]].copy().sort_values(time_col)
@@ -729,6 +870,147 @@ with tab5:
         )
         cat_summary.columns = [category_col, f"Total {metric_col}", f"Average {metric_col}", "Records"]
         st.dataframe(cat_summary, use_container_width=True)
+        
+    if text_col is not None:
+    with tab6:
+        st.subheader("🧠 Advanced NLP Insights")
+
+        n1, n2, n3 = st.columns(3)
+        total_reviews = len(df_raw)
+        avg_review_length = df_raw["review_length"].mean() if "review_length" in df_raw.columns else 0
+        avg_rating = df_raw["rating"].mean() if "rating" in df_raw.columns else None
+
+        n1.metric("Total Reviews", total_reviews)
+        n2.metric("Average Review Length", f"{avg_review_length:.1f} words")
+        n3.metric("Average Rating", f"{avg_rating:.2f}" if avg_rating is not None else "N/A")
+
+        st.markdown("#### Sentiment Summary")
+        if "sentiment_label" in df_raw.columns:
+            sentiment_counts = df_raw["sentiment_label"].value_counts().reset_index()
+            sentiment_counts.columns = ["Sentiment", "Count"]
+
+            sentiment_chart = alt.Chart(sentiment_counts).mark_bar().encode(
+                x=alt.X("Sentiment:N", title="Sentiment"),
+                y=alt.Y("Count:Q", title="Number of Reviews"),
+                tooltip=["Sentiment", "Count"]
+            ).properties(height=300)
+
+            st.altair_chart(sentiment_chart, use_container_width=True)
+
+        st.markdown("#### TF-IDF Top Keywords")
+        keyword_df, _, _ = build_tfidf_keywords(df_raw["clean_text"], top_n=15)
+        if not keyword_df.empty:
+            keyword_chart = alt.Chart(keyword_df).mark_bar().encode(
+                x=alt.X("Score:Q", title="Average TF-IDF Score"),
+                y=alt.Y("Keyword:N", sort="-x", title="Keyword"),
+                tooltip=["Keyword", alt.Tooltip("Score:Q", format=".4f")]
+            ).properties(height=420)
+
+            st.altair_chart(keyword_chart, use_container_width=True)
+        else:
+            st.info("Not enough text data to extract keywords.")
+
+        st.markdown("#### Review Length Distribution")
+        if "review_length" in df_raw.columns:
+            length_chart = alt.Chart(df_raw).mark_bar().encode(
+                x=alt.X("review_length:Q", bin=alt.Bin(maxbins=30), title="Review Length (words)"),
+                y=alt.Y("count()", title="Count")
+            ).properties(height=300)
+
+            st.altair_chart(length_chart, use_container_width=True)
+
+        if "rating" in df_raw.columns and "review_length" in df_raw.columns:
+            st.markdown("#### Rating vs Review Length")
+            scatter_df = df_raw[["rating", "review_length"]].copy()
+            scatter_df["rating"] = pd.to_numeric(scatter_df["rating"], errors="coerce")
+            scatter_df["review_length"] = pd.to_numeric(scatter_df["review_length"], errors="coerce")
+            scatter_df = scatter_df.dropna()
+
+            if not scatter_df.empty:
+                rating_len_chart = alt.Chart(scatter_df).mark_circle(size=60, opacity=0.5).encode(
+                    x=alt.X("review_length:Q", title="Review Length"),
+                    y=alt.Y("rating:Q", title="Rating"),
+                    tooltip=["review_length", alt.Tooltip("rating:Q", format=".2f")]
+                ).properties(height=320)
+
+                st.altair_chart(rating_len_chart, use_container_width=True)
+
+        st.markdown("#### Topic Clusters")
+        cluster_count = st.slider("Number of topic clusters", min_value=2, max_value=6, value=3, key="cluster_slider")
+
+        clustered_df, top_terms_per_cluster, _ = cluster_reviews(df_raw["clean_text"], n_clusters=cluster_count)
+
+        if clustered_df is not None:
+            cluster_summary = clustered_df["cluster"].value_counts().sort_index().reset_index()
+            cluster_summary.columns = ["Cluster", "Count"]
+
+            cluster_chart = alt.Chart(cluster_summary).mark_bar().encode(
+                x=alt.X("Cluster:N", title="Cluster"),
+                y=alt.Y("Count:Q", title="Reviews"),
+                tooltip=["Cluster", "Count"]
+            ).properties(height=300)
+
+            st.altair_chart(cluster_chart, use_container_width=True)
+
+            st.markdown("#### Cluster Themes")
+            for cluster_id, terms in top_terms_per_cluster.items():
+                st.write(f"**Cluster {cluster_id}:** {', '.join(terms)}")
+
+            st.markdown("#### Sample Reviews by Cluster")
+            sample_cluster = st.selectbox(
+                "Select a cluster to inspect",
+                sorted(clustered_df["cluster"].unique().tolist()),
+                key="sample_cluster_select"
+            )
+
+            cluster_samples = clustered_df[clustered_df["cluster"] == sample_cluster].head(10).copy()
+
+            if title_col is not None and title_col in df_raw.columns:
+                original_texts = df_raw[[title_col, text_col]].copy().reset_index(drop=True)
+                display_df = pd.concat(
+                    [cluster_samples.reset_index(drop=True), original_texts.iloc[:len(clustered_df)].reset_index(drop=True)],
+                    axis=1
+                )
+                display_df = display_df[display_df["cluster"] == sample_cluster].head(10)
+                st.dataframe(display_df[[title_col, text_col, "cluster"]], use_container_width=True)
+            else:
+                st.dataframe(cluster_samples[["clean_text", "cluster"]], use_container_width=True)
+        else:
+            st.info("Not enough text data to build topic clusters.")
+
+        st.markdown("#### Positive vs Negative Keywords")
+        if "sentiment_label" in df_raw.columns:
+            positive_df = df_raw[df_raw["sentiment_label"] == "Positive"]
+            negative_df = df_raw[df_raw["sentiment_label"] == "Negative"]
+
+            pos_words = get_word_counts(positive_df["clean_text"], stopwords=basic_stopwords, top_n=10)
+            neg_words = get_word_counts(negative_df["clean_text"], stopwords=basic_stopwords, top_n=10)
+
+            col_pos, col_neg = st.columns(2)
+
+            with col_pos:
+                st.markdown("**Top Positive Words**")
+                if pos_words:
+                    st.dataframe(pd.DataFrame(pos_words, columns=["Word", "Count"]), use_container_width=True)
+                else:
+                    st.info("No strong positive keywords found.")
+
+            with col_neg:
+                st.markdown("**Top Negative Words**")
+                if neg_words:
+                    st.dataframe(pd.DataFrame(neg_words, columns=["Word", "Count"]), use_container_width=True)
+                else:
+                    st.info("No strong negative keywords found.")
+
+        st.markdown("#### Search Reviews")
+        query = st.text_input("Search for a keyword in reviews", key="review_search")
+        if query:
+            matched = df_raw[df_raw["clean_text"].str.contains(query.lower(), na=False)]
+            if title_col is not None:
+                st.dataframe(matched[[title_col, text_col]].head(20), use_container_width=True)
+            else:
+                st.dataframe(matched[[text_col]].head(20), use_container_width=True)
+        
 
 st.divider()
 
