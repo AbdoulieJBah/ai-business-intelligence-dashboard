@@ -683,7 +683,7 @@ if df.empty:
 # -----------------------------
 prediction_lr, slope = forecast_next_value(df[metric_col])
 prediction_ma = moving_average_forecast(df[metric_col], window=5)
-
+prediction = prediction_lr
 total_metric = df[metric_col].sum()
 avg_metric = df[metric_col].mean()
 max_metric = df[metric_col].max()
