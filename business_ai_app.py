@@ -690,6 +690,11 @@ f2.metric("Moving Average Forecast", fmt_num(prediction_ma) if prediction_ma is 
 st.caption("Linear forecast uses a trend line. Moving average forecast uses the recent 5 records.")
 
 # -----------------------------
+# Forecast calculation
+# -----------------------------
+prediction, slope = forecast_next_value(df[metric_col])
+
+# -----------------------------
 # Executive summary
 # -----------------------------
 st.subheader("📊 Executive Summary")
