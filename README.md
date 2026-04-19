@@ -1,3 +1,7 @@
+## 📸 Dashboard Preview
+
+![Dashboard](C:\Users\Abdoulie Bah\Pictures\Screenshots/dashboard.png)
+
 # 🤖 AI Business Intelligence Dashboard
 
 An advanced **AI-powered business analytics dashboard** built with Python and Streamlit.  
