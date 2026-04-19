@@ -870,8 +870,7 @@ with tab5:
         )
         cat_summary.columns = [category_col, f"Total {metric_col}", f"Average {metric_col}", "Records"]
         st.dataframe(cat_summary, use_container_width=True)
-        
-    if text_col is not None:
+if text_col is not None:
     with tab6:
         st.subheader("🧠 Advanced NLP Insights")
 
@@ -1010,6 +1009,8 @@ with tab5:
                 st.dataframe(matched[[title_col, text_col]].head(20), use_container_width=True)
             else:
                 st.dataframe(matched[[text_col]].head(20), use_container_width=True)
+        
+    
         
 
 st.divider()
