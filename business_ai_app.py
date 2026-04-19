@@ -628,6 +628,22 @@ if profit_col != "None" and profit_col in df.columns:
     nonzero_metric = df[metric_col].replace(0, np.nan)
     df["Computed_Margin_Percent"] = (df[profit_col] / nonzero_metric) * 100
     margin_available = True
+# -----------------------------
+# Forecast and summary values
+# -----------------------------
+prediction_lr, slope = forecast_next_value(df[metric_col])
+prediction_ma = moving_average_forecast(df[metric_col], window=5)
+
+prediction = prediction_lr
+
+total_metric = df[metric_col].sum()
+avg_metric = df[metric_col].mean()
+max_metric = df[metric_col].max()
+min_metric = df[metric_col].min()
+latest_metric = df[metric_col].iloc[-1]
+growth_pct = safe_growth_percent(df[metric_col])
+
+
 
 # -----------------------------
 # Filters
@@ -678,31 +694,6 @@ if df.empty:
     st.warning("No data remains after applying filters.")
     st.stop()
 
-# -----------------------------
-# Forecast and summary values
-# -----------------------------
-prediction_lr, slope = forecast_next_value(df[metric_col])
-prediction_ma = moving_average_forecast(df[metric_col], window=5)
-prediction = prediction_lr
-total_metric = df[metric_col].sum()
-avg_metric = df[metric_col].mean()
-max_metric = df[metric_col].max()
-min_metric = df[metric_col].min()
-latest_metric = df[metric_col].iloc[-1]
-growth_pct = safe_growth_percent(df[metric_col])
-
-st.subheader("🔮 Forecasting")
-
-f1, f2 = st.columns(2)
-f1.metric("Linear Forecast", fmt_num(prediction_lr) if prediction_lr is not None else "N/A")
-f2.metric("Moving Average Forecast", fmt_num(prediction_ma) if prediction_ma is not None else "N/A")
-
-st.caption("Linear forecast uses a trend line. Moving average forecast uses the recent 5 records.")
-
-# -----------------------------
-# Forecast calculation
-# -----------------------------
-prediction, slope = forecast_next_value(df[metric_col])
 
 # -----------------------------
 # Executive summary
@@ -739,6 +730,19 @@ st.subheader("📝 Automatic Summary")
 st.caption("Automatically generated insights based on your selected data.")
 for line in generate_auto_summary(df, metric_col, category_col):
     st.markdown(f"• {line}")
+
+st.subheader("🔮 Forecasting")
+
+f1, f2 = st.columns(2)
+f1.metric("Linear Forecast", fmt_num(prediction_lr) if prediction_lr is not None else "N/A")
+f2.metric("Moving Average Forecast", fmt_num(prediction_ma) if prediction_ma is not None else "N/A")
+
+st.caption("Linear forecast uses a trend line. Moving average forecast uses the recent 5 records.")
+
+# -----------------------------
+# Forecast calculation
+# -----------------------------
+prediction, slope = forecast_next_value(df[metric_col])
 
 # -----------------------------
 # Recommendations
