@@ -228,6 +228,38 @@ def recommendation_text(latest_val, avg_val, slope, metric_name):
 
     return recs
 
+def generate_auto_summary(df, metric_col, category_col="None"):
+    summary = []
+
+    total = df[metric_col].sum()
+    avg = df[metric_col].mean()
+    mx = df[metric_col].max()
+    mn = df[metric_col].min()
+
+    summary.append(f"Total {metric_col} is {total:,.2f}.")
+    summary.append(f"Average {metric_col} is {avg:,.2f}.")
+    summary.append(f"Highest {metric_col} is {mx:,.2f}, while the lowest is {mn:,.2f}.")
+
+    if len(df) >= 2:
+        first = df[metric_col].iloc[0]
+        last = df[metric_col].iloc[-1]
+        if first != 0:
+            growth = ((last - first) / abs(first)) * 100
+            if growth > 0:
+                summary.append(f"The metric increased by {growth:.2f}% over the selected period.")
+            elif growth < 0:
+                summary.append(f"The metric decreased by {abs(growth):.2f}% over the selected period.")
+            else:
+                summary.append("The metric remained stable over the selected period.")
+
+    if category_col != "None" and category_col in df.columns:
+        grouped = df.groupby(category_col)[metric_col].sum().sort_values(ascending=False)
+        if len(grouped) > 0:
+            summary.append(f"The best-performing {category_col} is {grouped.index[0]}.")
+            summary.append(f"The lowest-performing {category_col} is {grouped.index[-1]}.")
+
+    return summary
+
 
 def safe_growth_percent(series):
     series = pd.to_numeric(series, errors="coerce").dropna()
@@ -345,8 +377,32 @@ def cluster_reviews(text_series, n_clusters=3):
         "clean_text": cleaned_docs,
         "cluster": labels
     })
-
     return clustered_df, top_terms_per_cluster, vectorizer
+@st.cache_data
+def detect_anomalies_iqr(df, metric_col):
+    temp = df.copy()
+    temp[metric_col] = pd.to_numeric(temp[metric_col], errors="coerce")
+    temp = temp.dropna(subset=[metric_col])
+
+    if len(temp) < 5:
+        temp["is_anomaly"] = False
+        return temp
+
+    q1 = temp[metric_col].quantile(0.25)
+    q3 = temp[metric_col].quantile(0.75)
+    iqr = q3 - q1
+
+    lower = q1 - 1.5 * iqr
+    upper = q3 + 1.5 * iqr
+
+    temp["is_anomaly"] = (temp[metric_col] < lower) | (temp[metric_col] > upper)
+    return temp
+@st.cache_data    
+def moving_average_forecast(series, window=5):
+    series = pd.to_numeric(series, errors="coerce").dropna()
+    if len(series) < window:
+        return None
+    return float(series.tail(window).mean())
 
 # -----------------------------
 # Header
@@ -615,7 +671,8 @@ if df.empty:
 # -----------------------------
 # Forecast and summary values
 # -----------------------------
-prediction, slope = forecast_next_value(df[metric_col])
+prediction_lr, slope = forecast_next_value(df[metric_col])
+prediction_ma = moving_average_forecast(df[metric_col], window=5)
 
 total_metric = df[metric_col].sum()
 avg_metric = df[metric_col].mean()
@@ -623,6 +680,14 @@ max_metric = df[metric_col].max()
 min_metric = df[metric_col].min()
 latest_metric = df[metric_col].iloc[-1]
 growth_pct = safe_growth_percent(df[metric_col])
+
+st.subheader("🔮 Forecasting")
+
+f1, f2 = st.columns(2)
+f1.metric("Linear Forecast", fmt_num(prediction_lr) if prediction_lr is not None else "N/A")
+f2.metric("Moving Average Forecast", fmt_num(prediction_ma) if prediction_ma is not None else "N/A")
+
+st.caption("Linear forecast uses a trend line. Moving average forecast uses the recent 5 records.")
 
 # -----------------------------
 # Executive summary
@@ -654,6 +719,11 @@ if not has_real_date:
     st.info("No reliable date column detected. Trend and forecast use generated dates for illustration.")
 
 st.divider()
+
+st.subheader("📝 Automatic Summary")
+st.caption("Automatically generated insights based on your selected data.")
+for line in generate_auto_summary(df, metric_col, category_col):
+    st.markdown(f"• {line}")
 
 # -----------------------------
 # Recommendations
@@ -732,6 +802,18 @@ if profit_col != "None" and profit_col in df.columns:
 for i, insight in enumerate(insights):
     st.write(f"🔹 {insight}")
 st.success("These insights are automatically generated using statistical analysis and trend detection.")
+
+st.subheader("🚨 Anomaly Detection")
+
+anomaly_df = detect_anomalies_iqr(df, metric_col)
+anomaly_count = int(anomaly_df["is_anomaly"].sum())
+
+if anomaly_count > 0:
+    st.warning(f"{anomaly_count} unusual records were detected in {metric_col}.")
+    st.dataframe(anomaly_df[anomaly_df["is_anomaly"]].head(20), use_container_width=True)
+else:
+    st.success("No major anomalies detected.")
+
 # -----------------------------
 # Visual analysis
 # -----------------------------
