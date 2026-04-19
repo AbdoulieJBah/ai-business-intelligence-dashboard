@@ -1,46 +1,96 @@
-# AI Business Intelligence Dashboard
+# 🤖 AI Business Intelligence Dashboard
 
-An AI-powered business intelligence dashboard built with Python and Streamlit. This application allows users to upload business sales data, view key insights, analyze trends, and generate future sales forecasts using Machine Learning.
+An advanced **AI-powered business analytics dashboard** built with Python and Streamlit.  
+This application automatically analyzes any business dataset, generates insights, detects anomalies, and provides forecasting using machine learning and NLP.
 
-## Features
+---
 
-- Upload CSV business data
-- Automatic sales column support
-- Works with standard `sales` datasets and Big Mart datasets
-- Sales trend visualization
-- Key business insights
-- AI-based sales forecasting using Linear Regression
-- Product category analysis
-- Outlet type and outlet size analysis
-- Download cleaned report
+## 🚀 Features
 
-## Technologies Used
+### 📊 Data Analysis
+- Upload CSV or Excel business datasets
+- Automatic detection of:
+  - Revenue / Sales / Profit columns
+  - Date columns (auto-generated if missing)
+  - Category variables
+- Interactive filtering (date, category, value range)
+
+### 📈 Forecasting
+- Linear Regression forecasting
+- Moving Average forecasting
+- Trend detection (growth / decline)
+
+### 💡 AI Insights
+- Automatic business insights generation
+- Performance evaluation (growth, stability, volatility)
+- Category performance comparison
+- Profitability analysis
+
+### 🚨 Anomaly Detection
+- Detect unusual records using IQR method
+- Highlight outliers and abnormal patterns
+- Percentage anomaly reporting
+
+### 🧠 NLP (Text Analytics)
+- Works with review-based datasets
+- Text cleaning and preprocessing
+- Sentiment analysis (Positive / Neutral / Negative)
+- TF-IDF keyword extraction
+- Topic clustering (KMeans)
+- Review search functionality
+- Positive vs Negative keyword analysis
+
+### 📊 Visualization
+- Trend charts
+- Distribution analysis
+- Category breakdown
+- Relationship analysis
+- NLP visual insights
+
+### 📥 Export
+- Download cleaned dataset
+- Download summary report
+
+---
+
+## 🛠️ Technologies Used
 
 - Python
 - Streamlit
-- Pandas
-- NumPy
-- Scikit-learn
+- Pandas & NumPy
+- Scikit-learn (ML models)
+- Altair (visualization)
+- NLP (TF-IDF, clustering)
 
-## How It Works
+---
 
-The dashboard:
-1. Loads a CSV file
-2. Cleans and processes the data
-3. Detects the sales column
-4. Generates summary metrics
-5. Visualizes trends
-6. Predicts the next sales value using Linear Regression
+## ⚙️ How It Works
 
-## Supported Datasets
+1. Upload a CSV or Excel dataset
+2. The system automatically detects key business columns
+3. Data is cleaned and processed
+4. Insights, KPIs, and forecasts are generated
+5. Optional NLP analysis is applied (if text data exists)
+6. Results are visualized and available for download
 
-The app supports:
-- CSV files with a `sales` column
-- Big Mart dataset with `Item_Outlet_Sales`
+---
 
-If a `date` column is missing, the app automatically generates one.
+## 📂 Supported Data
 
-## Installation
+The dashboard works with:
+
+- Sales / Revenue datasets
+- Financial datasets
+- E-commerce data
+- Customer review datasets
+- Big Mart dataset
+- Any structured CSV/Excel file
+
+If a date column is missing, the system automatically generates one.
+
+---
+
+## 💻 Installation
 
 Clone the repository:
 
