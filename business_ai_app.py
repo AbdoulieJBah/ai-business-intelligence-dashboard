@@ -14,9 +14,12 @@ st.set_page_config(
 # Helpers
 # -----------------------------
 @st.cache_data
-def load_csv(uploaded_file):
-    return pd.read_csv(uploaded_file)
+def load_csv(file):
+    return pd.read_csv(file)
 
+@st.cache_data
+def load_excel(file):
+    return pd.read_excel(file)
 
 @st.cache_data
 def load_demo_data():
@@ -64,8 +67,6 @@ def load_demo_data():
 
 def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
-
-    # Common dataset-specific mappings
     mappings = {
         "Item_Outlet_Sales": "sales",
         "Sales": "sales",
@@ -75,11 +76,9 @@ def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
         "Quantity": "quantity",
         "Date": "date"
     }
-
     for old_col, new_col in mappings.items():
         if old_col in df.columns and new_col not in df.columns:
             df.rename(columns={old_col: new_col}, inplace=True)
-
     return df
 
 
@@ -88,7 +87,8 @@ def detect_date_column(df: pd.DataFrame):
         return "date"
 
     for col in df.columns:
-        if "date" in col.lower() or "time" in col.lower() or "day" in col.lower():
+        name = col.lower()
+        if "date" in name or "time" in name or "day" in name:
             parsed = pd.to_datetime(df[col], errors="coerce")
             if parsed.notna().sum() > 0:
                 return col
@@ -148,15 +148,24 @@ def suggest_quantity_column(columns):
 
 
 def suggest_category_columns(df, exclude_cols):
-    candidates = []
+    preferred = []
+    fallback = []
+
     for col in df.columns:
         if col in exclude_cols:
             continue
-        if df[col].dtype == "object" or str(df[col].dtype).startswith("category"):
-            unique_count = df[col].nunique(dropna=True)
-            if 2 <= unique_count <= 40:
-                candidates.append(col)
-    return candidates
+
+        dtype_ok = df[col].dtype == "object" or str(df[col].dtype).startswith("category")
+        unique_count = df[col].nunique(dropna=True)
+
+        if dtype_ok and 2 <= unique_count <= 40:
+            col_lower = col.lower()
+            if any(k in col_lower for k in ["category", "type", "region", "segment", "product", "item", "outlet", "store"]):
+                preferred.append(col)
+            else:
+                fallback.append(col)
+
+    return preferred + fallback
 
 
 def clean_numeric(df, col):
@@ -211,50 +220,66 @@ def recommendation_text(latest_val, avg_val, slope, metric_name):
     return recs
 
 
+def safe_growth_percent(series):
+    series = pd.to_numeric(series, errors="coerce").dropna()
+    if len(series) < 2:
+        return None
+    first = series.iloc[0]
+    last = series.iloc[-1]
+    if first == 0:
+        return None
+    return ((last - first) / abs(first)) * 100
+
+
 # -----------------------------
 # Header
 # -----------------------------
 st.title("📊 Universal AI Business Dashboard")
-st.markdown("### Analyze business CSV files with insights, filters, and forecasting")
+st.markdown("### Analyze business files with insights, filters, and forecasting")
 st.caption("Built by Abdoulie J Bah")
 
-st.markdown(
-    """
-Upload a CSV file and let the app automatically detect useful business columns.
-You can also override the suggestions from the sidebar.
-"""
+st.write(
+    "Upload a CSV or Excel file and let the app automatically detect useful business columns. "
+    "You can override the suggestions from the sidebar."
 )
+
+with st.expander("How to use this dashboard"):
+    st.write(
+        """
+        1. Upload a CSV or Excel file, or use the demo dataset.
+        2. Select the main metric, date column, and optional business columns from the sidebar.
+        3. Use filters to narrow the analysis.
+        4. Review the executive summary, recommendations, visuals, and downloads.
+        """
+    )
 
 # -----------------------------
 # Data source
 # -----------------------------
 data_source = st.radio(
     "Choose data source",
-    ["Upload CSV", "Use demo dataset"],
+    ["Upload file", "Use demo dataset"],
     horizontal=True
 )
 
 df_raw = None
 uploaded_file = None
 
-if data_source == "Upload CSV":
+if data_source == "Upload file":
     uploaded_file = st.file_uploader("Upload CSV or Excel file", type=["csv", "xlsx"])
 
-if uploaded_file is not None:
-    try:
-        # Detect file type automatically
-        if uploaded_file.name.endswith(".csv"):
-            df = pd.read_csv(uploaded_file)
-        else:
-            df = pd.read_excel(uploaded_file)
+    if uploaded_file is not None:
+        try:
+            if uploaded_file.name.lower().endswith(".csv"):
+                df_raw = load_csv(uploaded_file)
+            else:
+                df_raw = load_excel(uploaded_file)
 
-        st.success("File uploaded successfully!")
-        
-        df_raw = df 
+            st.success("File uploaded successfully!")
 
-    except Exception as e:
-        st.error(f"Error reading file: {e}")
-        st.stop()
+        except Exception as e:
+            st.error(f"Could not read the file: {e}")
+            st.stop()
 else:
     df_raw = load_demo_data()
 
@@ -266,7 +291,7 @@ df_raw = normalize_columns(df_raw)
 # -----------------------------
 # Health check
 # -----------------------------
-st.subheader("Dataset Health Check")
+st.subheader("📋 Dataset Health Check")
 
 h1, h2, h3, h4, h5 = st.columns(5)
 h1.metric("Rows", len(df_raw))
@@ -277,6 +302,8 @@ h5.metric("Numeric Columns", len(df_raw.select_dtypes(include=np.number).columns
 
 with st.expander("Preview Raw Data"):
     st.dataframe(df_raw.head(20), use_container_width=True)
+
+st.divider()
 
 # -----------------------------
 # Automatic suggestions
@@ -315,30 +342,35 @@ date_col = st.sidebar.selectbox(
     index=date_options.index(detected_date_col) if detected_date_col in date_options else 0
 )
 
-profit_options = ["None"] + df_raw.columns.tolist()
+other_options = ["None"] + df_raw.columns.tolist()
+
 profit_col = st.sidebar.selectbox(
     "Profit column (optional)",
-    profit_options,
-    index=profit_options.index(suggested_profit) if suggested_profit in profit_options else 0
+    other_options,
+    index=other_options.index(suggested_profit) if suggested_profit in other_options else 0
 )
 
 cost_col = st.sidebar.selectbox(
     "Cost/Expense column (optional)",
-    profit_options,
-    index=profit_options.index(suggested_cost) if suggested_cost in profit_options else 0
+    other_options,
+    index=other_options.index(suggested_cost) if suggested_cost in other_options else 0
 )
 
 quantity_col = st.sidebar.selectbox(
     "Quantity column (optional)",
-    profit_options,
-    index=profit_options.index(suggested_quantity) if suggested_quantity in profit_options else 0
+    other_options,
+    index=other_options.index(suggested_quantity) if suggested_quantity in other_options else 0
 )
 
-category_options = ["None"] + category_candidates + [c for c in df_raw.columns if c not in category_candidates]
-category_col = st.sidebar.selectbox("Primary category", category_options, index=1 if len(category_options) > 1 else 0)
+category_options = ["None"] + category_candidates
+category_col = st.sidebar.selectbox(
+    "Primary category",
+    category_options,
+    index=1 if len(category_options) > 1 else 0
+)
 
-second_category_options = ["None"] + [c for c in df_raw.columns if c != category_col]
-second_category_col = st.sidebar.selectbox("Secondary category", second_category_options)
+secondary_candidates = ["None"] + [c for c in category_candidates if c != category_col]
+second_category_col = st.sidebar.selectbox("Secondary category", secondary_candidates)
 
 # -----------------------------
 # Prepare working df
@@ -365,24 +397,37 @@ if not has_real_date:
     df["Generated_Date"] = pd.date_range(start="2024-01-01", periods=len(df), freq="D")
     time_col = "Generated_Date"
 
-# Optional numeric cleaning
-optional_numeric_cols = [profit_col, cost_col, quantity_col]
-for col in optional_numeric_cols:
+for col in [profit_col, cost_col, quantity_col]:
     if col != "None" and col in df.columns:
         df = clean_numeric(df, col)
 
-# Auto compute margin if possible
 margin_available = False
-if profit_col != "None" and metric_col:
-    if profit_col in df.columns:
-        df["Computed_Margin_Percent"] = (df[profit_col] / df[metric_col].replace(0, np.nan)) * 100
-        margin_available = True
+if profit_col != "None" and profit_col in df.columns:
+    nonzero_metric = df[metric_col].replace(0, np.nan)
+    df["Computed_Margin_Percent"] = (df[profit_col] / nonzero_metric) * 100
+    margin_available = True
 
 # -----------------------------
 # Filters
 # -----------------------------
 st.sidebar.header("Filters")
 
+# Better date filter
+if has_real_date:
+    min_date = df[time_col].min().date()
+    max_date = df[time_col].max().date()
+    selected_dates = st.sidebar.date_input(
+        "Filter date range",
+        value=(min_date, max_date),
+        min_value=min_date,
+        max_value=max_date
+    )
+
+    if isinstance(selected_dates, tuple) and len(selected_dates) == 2:
+        start_date, end_date = selected_dates
+        df = df[(df[time_col].dt.date >= start_date) & (df[time_col].dt.date <= end_date)]
+
+# Category filters
 if category_col != "None" and category_col in df.columns:
     vals = sorted(df[category_col].dropna().astype(str).unique().tolist())
     selected_vals = st.sidebar.multiselect(f"Filter {category_col}", vals, default=vals)
@@ -411,52 +456,52 @@ if df.empty:
     st.stop()
 
 # -----------------------------
-# Forecast
+# Forecast and summary values
 # -----------------------------
 prediction, slope = forecast_next_value(df[metric_col])
-
-# -----------------------------
-# Executive summary cards
-# -----------------------------
-st.subheader("Executive Summary")
 
 total_metric = df[metric_col].sum()
 avg_metric = df[metric_col].mean()
 max_metric = df[metric_col].max()
 min_metric = df[metric_col].min()
 latest_metric = df[metric_col].iloc[-1]
+growth_pct = safe_growth_percent(df[metric_col])
 
-c1, c2, c3, c4 = st.columns(4)
+# -----------------------------
+# Executive summary
+# -----------------------------
+st.subheader("📊 Executive Summary")
+
+c1, c2, c3, c4, c5 = st.columns(5)
 c1.metric(f"Total {metric_col}", fmt_num(total_metric))
 c2.metric(f"Average {metric_col}", fmt_num(avg_metric))
 c3.metric(f"Highest {metric_col}", fmt_num(max_metric))
 c4.metric(f"Predicted Next {metric_col}", fmt_num(prediction) if prediction is not None else "N/A")
+c5.metric("Growth %", f"{growth_pct:.2f}%" if growth_pct is not None else "N/A")
 
-# Profit / margin row
 extra_cols = st.columns(4)
+
 if profit_col != "None" and profit_col in df.columns:
-    total_profit = df[profit_col].sum(skipna=True)
-    extra_cols[0].metric("Total Profit", fmt_num(total_profit))
+    extra_cols[0].metric("Total Profit", fmt_num(df[profit_col].sum(skipna=True)))
 
 if cost_col != "None" and cost_col in df.columns:
-    total_cost = df[cost_col].sum(skipna=True)
-    extra_cols[1].metric("Total Cost", fmt_num(total_cost))
+    extra_cols[1].metric("Total Cost", fmt_num(df[cost_col].sum(skipna=True)))
 
 if quantity_col != "None" and quantity_col in df.columns:
-    total_qty = df[quantity_col].sum(skipna=True)
-    extra_cols[2].metric("Total Quantity", fmt_num(total_qty))
+    extra_cols[2].metric("Total Quantity", fmt_num(df[quantity_col].sum(skipna=True)))
 
 if margin_available:
-    avg_margin = df["Computed_Margin_Percent"].mean(skipna=True)
-    extra_cols[3].metric("Average Margin %", fmt_num(avg_margin))
+    extra_cols[3].metric("Average Margin %", fmt_num(df["Computed_Margin_Percent"].mean(skipna=True)))
 
 if not has_real_date:
     st.info("No reliable date column detected. Trend and forecast use generated dates for illustration.")
 
+st.divider()
+
 # -----------------------------
 # Recommendations
 # -----------------------------
-st.subheader("Recommendations")
+st.subheader("💡 Recommendations")
 
 for rec in recommendation_text(latest_metric, avg_metric, slope, metric_col):
     st.write(f"- {rec}")
@@ -471,10 +516,15 @@ if margin_available:
     low_margin_rows = df["Computed_Margin_Percent"].lt(df["Computed_Margin_Percent"].mean(skipna=True)).sum()
     st.write(f"- {low_margin_rows} rows are below the average margin. Review pricing or cost structure where relevant.")
 
+if prediction is not None:
+    st.caption("Forecast based on a simple linear regression trend model.")
+
+st.divider()
+
 # -----------------------------
-# Main visuals
+# Visual analysis
 # -----------------------------
-st.subheader("Visual Analysis")
+st.subheader("📈 Visual Analysis")
 
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "Trend",
@@ -490,7 +540,7 @@ with tab1:
     line_chart = alt.Chart(trend_df).mark_line(point=True).encode(
         x=alt.X(f"{time_col}:T", title="Date"),
         y=alt.Y(f"{metric_col}:Q", title=metric_col),
-        tooltip=[time_col, alt.Tooltip(f"{metric_col}:Q", format=".2f")]
+        tooltip=[alt.Tooltip(f"{time_col}:T", title="Date"), alt.Tooltip(f"{metric_col}:Q", format=".2f")]
     ).properties(height=360)
 
     st.altair_chart(line_chart, use_container_width=True)
@@ -512,7 +562,12 @@ with tab2:
         st.altair_chart(margin_hist, use_container_width=True)
 
 with tab3:
+    valid_category = False
     if category_col != "None" and category_col in df.columns:
+        if df[category_col].dtype == "object" or str(df[category_col].dtype).startswith("category"):
+            valid_category = True
+
+    if valid_category:
         grouped_df = (
             df.groupby(category_col)[metric_col]
             .sum()
@@ -530,22 +585,23 @@ with tab3:
         st.altair_chart(bar, use_container_width=True)
 
         if second_category_col != "None" and second_category_col in df.columns:
-            grouped_df2 = (
-                df.groupby(second_category_col)[metric_col]
-                .sum()
-                .sort_values(ascending=False)
-                .head(10)
-                .reset_index()
-            )
-            st.markdown(f"#### {metric_col} by {second_category_col}")
-            bar2 = alt.Chart(grouped_df2).mark_bar().encode(
-                x=alt.X(f"{second_category_col}:N", title=second_category_col),
-                y=alt.Y(f"{metric_col}:Q", title=f"Total {metric_col}"),
-                tooltip=[second_category_col, alt.Tooltip(f"{metric_col}:Q", format=".2f")]
-            ).properties(height=320)
-            st.altair_chart(bar2, use_container_width=True)
+            if df[second_category_col].dtype == "object" or str(df[second_category_col].dtype).startswith("category"):
+                grouped_df2 = (
+                    df.groupby(second_category_col)[metric_col]
+                    .sum()
+                    .sort_values(ascending=False)
+                    .head(10)
+                    .reset_index()
+                )
+                st.markdown(f"#### {metric_col} by {second_category_col}")
+                bar2 = alt.Chart(grouped_df2).mark_bar().encode(
+                    x=alt.X(f"{second_category_col}:N", title=second_category_col),
+                    y=alt.Y(f"{metric_col}:Q", title=f"Total {metric_col}"),
+                    tooltip=[second_category_col, alt.Tooltip(f"{metric_col}:Q", format=".2f")]
+                ).properties(height=320)
+                st.altair_chart(bar2, use_container_width=True)
     else:
-        st.info("Choose a category column from the sidebar for grouped business analysis.")
+        st.warning("Selected category is not categorical. Please choose a valid category column from the sidebar.")
 
 with tab4:
     other_numeric = [c for c in detect_metric_candidates(df) if c != metric_col and c in df.columns]
@@ -556,13 +612,11 @@ with tab4:
         rel_df = rel_df.dropna(subset=[x_col, metric_col])
 
         if not rel_df.empty:
-            color_encoding = alt.Color(f"{category_col}:N") if category_col != "None" and category_col in rel_df.columns else alt.value("#1f77b4")
-
+            # simplified relationship chart without overloaded legend
             scatter = alt.Chart(rel_df).mark_circle(size=80, opacity=0.65).encode(
                 x=alt.X(f"{x_col}:Q", title=x_col),
                 y=alt.Y(f"{metric_col}:Q", title=metric_col),
-                color=color_encoding,
-                tooltip=[x_col, alt.Tooltip(f"{metric_col}:Q", format=".2f")]
+                tooltip=[alt.Tooltip(f"{x_col}:Q", format=".2f"), alt.Tooltip(f"{metric_col}:Q", format=".2f")]
             ).properties(height=380)
 
             st.altair_chart(scatter, use_container_width=True)
@@ -584,7 +638,12 @@ with tab5:
         bottom_rows = df.sort_values(metric_col, ascending=True).head(10)
         st.dataframe(bottom_rows, use_container_width=True)
 
+    valid_category = False
     if category_col != "None" and category_col in df.columns:
+        if df[category_col].dtype == "object" or str(df[category_col].dtype).startswith("category"):
+            valid_category = True
+
+    if valid_category:
         st.markdown("#### Category Summary")
         cat_summary = (
             df.groupby(category_col)[metric_col]
@@ -595,10 +654,12 @@ with tab5:
         cat_summary.columns = [category_col, f"Total {metric_col}", f"Average {metric_col}", "Records"]
         st.dataframe(cat_summary, use_container_width=True)
 
+st.divider()
+
 # -----------------------------
 # Downloads
 # -----------------------------
-st.subheader("Downloads")
+st.subheader("📥 Downloads")
 
 summary_rows = [
     ["Main Metric", metric_col],
@@ -611,6 +672,9 @@ summary_rows = [
 
 if prediction is not None:
     summary_rows.append([f"Predicted Next {metric_col}", round(prediction, 2)])
+
+if growth_pct is not None:
+    summary_rows.append(["Growth %", round(growth_pct, 2)])
 
 if profit_col != "None" and profit_col in df.columns:
     summary_rows.append(["Total Profit", round(df[profit_col].sum(skipna=True), 2)])
@@ -656,5 +720,5 @@ with d2:
 # -----------------------------
 st.markdown("---")
 st.caption(
-    "This dashboard is built for flexible business CSV analysis, interactive filtering, and simple machine-learning-based forecasting."
+    "This dashboard is built for flexible business file analysis, interactive filtering, and simple machine-learning-based forecasting."
 )
