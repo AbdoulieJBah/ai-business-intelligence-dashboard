@@ -152,33 +152,30 @@ def suggest_quantity_column(columns):
 
 
 def suggest_category_columns(df, exclude_cols):
-    candidates = []
+    preferred = []
+    fallback = []
 
     for col in df.columns:
         if col in exclude_cols:
             continue
 
-        # Skip date/time columns
-        if "date" in col.lower() or "time" in col.lower():
-            continue
+        unique_count = df[col].nunique(dropna=True)
 
-        series = df[col]
+        # Accept object columns OR low unique numeric columns
+        if df[col].dtype == "object" or unique_count < 50:
 
-        # Accept object/category columns
-        if series.dtype == "object" or str(series.dtype).startswith("category"):
-            unique_count = series.nunique(dropna=True)
+            col_lower = col.lower()
 
-            if 2 <= unique_count <= 50:
-                candidates.append(col)
-                continue
+            if any(k in col_lower for k in ["category", "type", "region", "segment", "product", "item", "outlet", "store"]):
+                preferred.append(col)
+            else:
+                fallback.append(col)
 
-        # Accept low-cardinality numeric columns as categories
-        unique_count = series.nunique(dropna=True)
-        if 2 <= unique_count <= 20:
-            candidates.append(col)
+    # 🔥 fallback: if still empty, force include some columns
+    if len(preferred + fallback) == 0:
+        fallback = df.columns.tolist()
 
-    return candidates
-
+    return preferred + fallback
 
 def clean_numeric(df, col):
     df[col] = pd.to_numeric(df[col], errors="coerce")
