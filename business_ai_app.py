@@ -238,13 +238,21 @@ df_raw = None
 uploaded_file = None
 
 if data_source == "Upload CSV":
-    uploaded_file = st.file_uploader("Upload a CSV file", type=["csv"])
-    if uploaded_file is not None:
-        try:
-            df_raw = load_csv(uploaded_file)
-        except Exception as e:
-            st.error(f"Could not read the CSV file: {e}")
-            st.stop()
+    uploaded_file = st.file_uploader("Upload CSV or Excel file", type=["csv", "xlsx"])
+
+if uploaded_file is not None:
+    try:
+        # Detect file type automatically
+        if uploaded_file.name.endswith(".csv"):
+            df = pd.read_csv(uploaded_file)
+        else:
+            df = pd.read_excel(uploaded_file)
+
+        st.success("File uploaded successfully!")
+
+    except Exception as e:
+        st.error(f"Error reading file: {e}")
+        st.stop()
 else:
     df_raw = load_demo_data()
 
