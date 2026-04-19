@@ -148,24 +148,32 @@ def suggest_quantity_column(columns):
 
 
 def suggest_category_columns(df, exclude_cols):
-    preferred = []
-    fallback = []
+    candidates = []
 
     for col in df.columns:
         if col in exclude_cols:
             continue
 
-        dtype_ok = df[col].dtype == "object" or str(df[col].dtype).startswith("category")
-        unique_count = df[col].nunique(dropna=True)
+        # Skip date/time columns
+        if "date" in col.lower() or "time" in col.lower():
+            continue
 
-        if dtype_ok and 2 <= unique_count <= 40:
-            col_lower = col.lower()
-            if any(k in col_lower for k in ["category", "type", "region", "segment", "product", "item", "outlet", "store"]):
-                preferred.append(col)
-            else:
-                fallback.append(col)
+        series = df[col]
 
-    return preferred + fallback
+        # Accept object/category columns
+        if series.dtype == "object" or str(series.dtype).startswith("category"):
+            unique_count = series.nunique(dropna=True)
+
+            if 2 <= unique_count <= 50:
+                candidates.append(col)
+                continue
+
+        # Accept low-cardinality numeric columns as categories
+        unique_count = series.nunique(dropna=True)
+        if 2 <= unique_count <= 20:
+            candidates.append(col)
+
+    return candidates
 
 
 def clean_numeric(df, col):
@@ -362,7 +370,7 @@ quantity_col = st.sidebar.selectbox(
     index=other_options.index(suggested_quantity) if suggested_quantity in other_options else 0
 )
 
-category_options = ["None"] + category_candidates
+category_options = ["None"] + sorted(list(dict.fromkeys(category_candidates)))
 category_col = st.sidebar.selectbox(
     "Primary category",
     category_options,
