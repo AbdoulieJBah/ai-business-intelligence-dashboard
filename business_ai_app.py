@@ -404,6 +404,7 @@ if df_raw is None:
     st.stop()
 
 df_raw = normalize_columns(df_raw)
+df["generated_date"] = pd.date_range(start="2023-01-01", periods=len(df), freq="D")
 
 # -----------------------------
 # NLP preparation
@@ -477,11 +478,21 @@ metric_col = st.sidebar.selectbox(
     index=numeric_candidates.index(suggested_metric) if suggested_metric in numeric_candidates else 0
 )
 
-date_options = ["None"] + df_raw.columns.tolist()
+
+date_options = ["generated_date"] + [
+    col for col in df.columns if col != "generated_date"
+]
+
+# Detect if a real date exists
+default_index = 0  # fallback to generated_date
+
+if detected_date_col and detected_date_col in date_options:
+    default_index = date_options.index(detected_date_col)
+
 date_col = st.sidebar.selectbox(
     "Date column",
     date_options,
-    index=date_options.index(detected_date_col) if detected_date_col in date_options else 0
+    index=default_index
 )
 
 other_options = ["None"] + df_raw.columns.tolist()
