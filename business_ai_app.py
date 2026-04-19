@@ -404,9 +404,7 @@ if df_raw is None:
     st.stop()
 
 df_raw = normalize_columns(df_raw)
-df_raw = normalize_columns(df_raw)
 
-# ✅ correct
 df_raw["generated_date"] = pd.date_range(
     start="2023-01-01",
     periods=len(df_raw),
@@ -486,11 +484,10 @@ metric_col = st.sidebar.selectbox(
 
 
 date_options = ["generated_date"] + [
-    col for col in df.columns if col != "generated_date"
+    col for col in df_raw.columns if col != "generated_date"
 ]
 
-# Detect if a real date exists
-default_index = 0  # fallback to generated_date
+default_index = 0
 
 if detected_date_col and detected_date_col in date_options:
     default_index = date_options.index(detected_date_col)
