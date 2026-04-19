@@ -422,11 +422,15 @@ elif "about_product" in df_raw.columns:
 if "review_title" in df_raw.columns:
     title_col = "review_title"
 
+# --- Clean text
 if text_col is not None:
     df_raw["clean_text"] = df_raw[text_col].fillna("").astype(str).apply(clean_text)
     df_raw["review_length"] = df_raw["clean_text"].apply(lambda x: len(x.split()))
 
+# --- FIX: convert rating to numeric FIRST
 if "rating" in df_raw.columns:
+    df_raw["rating"] = pd.to_numeric(df_raw["rating"], errors="coerce")
+
     df_raw["sentiment_label"] = df_raw["rating"].apply(simple_sentiment_from_rating)
 
 # -----------------------------
