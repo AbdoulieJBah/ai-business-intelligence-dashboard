@@ -404,8 +404,14 @@ if df_raw is None:
     st.stop()
 
 df_raw = normalize_columns(df_raw)
-df["generated_date"] = pd.date_range(start="2023-01-01", periods=len(df), freq="D")
+df_raw = normalize_columns(df_raw)
 
+# ✅ correct
+df_raw["generated_date"] = pd.date_range(
+    start="2023-01-01",
+    periods=len(df_raw),
+    freq="D"
+)
 # -----------------------------
 # NLP preparation
 # -----------------------------
