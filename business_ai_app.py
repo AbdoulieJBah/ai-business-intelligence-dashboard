@@ -461,7 +461,7 @@ if df_raw is None:
 
 df_raw = normalize_columns(df_raw)
 
-df_raw["generated_date"] = pd.date_range(start="2024-01-01", periods=len(df_raw), freq="D")
+df["generated_date"] = pd.date_range(start="2024-01-01", periods=len(df), freq="D")
 time_col = "generated_date"
     
 
@@ -526,16 +526,6 @@ category_candidates = suggest_category_columns(
     exclude_cols=[c for c in [suggested_metric, detected_date_col, suggested_profit, suggested_cost, suggested_quantity] if c]
 )
 
-st.subheader("🧠 Business Insight")
-
-if growth_pct is not None:
-    if growth_pct > 0:
-        st.success("Business performance is improving over time.")
-    else:
-        st.error("Business performance is declining and needs attention.")
-
-if anomaly_pct > 5:
-    st.warning("High anomaly rate detected — investigate data quality or unusual events.")
 
 # -----------------------------
 # Sidebar config
@@ -628,22 +618,6 @@ if profit_col != "None" and profit_col in df.columns:
     nonzero_metric = df[metric_col].replace(0, np.nan)
     df["Computed_Margin_Percent"] = (df[profit_col] / nonzero_metric) * 100
     margin_available = True
-# -----------------------------
-# Forecast and summary values
-# -----------------------------
-prediction_lr, slope = forecast_next_value(df[metric_col])
-prediction_ma = moving_average_forecast(df[metric_col], window=5)
-
-prediction = prediction_lr
-
-total_metric = df[metric_col].sum()
-avg_metric = df[metric_col].mean()
-max_metric = df[metric_col].max()
-min_metric = df[metric_col].min()
-latest_metric = df[metric_col].iloc[-1]
-growth_pct = safe_growth_percent(df[metric_col])
-
-
 
 # -----------------------------
 # Filters
@@ -693,6 +667,29 @@ if metric_min != metric_max:
 if df.empty:
     st.warning("No data remains after applying filters.")
     st.stop()
+    
+# -----------------------------
+# Forecast and summary values
+# -----------------------------
+prediction_lr, slope = forecast_next_value(df[metric_col])
+prediction_ma = moving_average_forecast(df[metric_col], window=5)
+
+prediction = prediction_lr
+
+total_metric = df[metric_col].sum()
+avg_metric = df[metric_col].mean()
+max_metric = df[metric_col].max()
+min_metric = df[metric_col].min()
+latest_metric = df[metric_col].iloc[-1]
+growth_pct = safe_growth_percent(df[metric_col])
+
+st.subheader("🔮 Forecasting")
+
+f1, f2 = st.columns(2)
+f1.metric("Linear Forecast", fmt_num(prediction_lr) if prediction_lr is not None else "N/A")
+f2.metric("Moving Average Forecast", fmt_num(prediction_ma) if prediction_ma is not None else "N/A")
+
+st.caption("Linear forecast uses a trend line. Moving average forecast uses the recent 5 records.")
 
 
 # -----------------------------
@@ -731,18 +728,7 @@ st.caption("Automatically generated insights based on your selected data.")
 for line in generate_auto_summary(df, metric_col, category_col):
     st.markdown(f"• {line}")
 
-st.subheader("🔮 Forecasting")
 
-f1, f2 = st.columns(2)
-f1.metric("Linear Forecast", fmt_num(prediction_lr) if prediction_lr is not None else "N/A")
-f2.metric("Moving Average Forecast", fmt_num(prediction_ma) if prediction_ma is not None else "N/A")
-
-st.caption("Linear forecast uses a trend line. Moving average forecast uses the recent 5 records.")
-
-# -----------------------------
-# Forecast calculation
-# -----------------------------
-prediction, slope = forecast_next_value(df[metric_col])
 
 # -----------------------------
 # Recommendations
@@ -837,16 +823,6 @@ for i, insight in enumerate(insights):
     st.write(f"🔹 {insight}")
 st.success("These insights are automatically generated using statistical analysis and trend detection.")
 
-st.subheader("🚨 Anomaly Detection")
-
-anomaly_df = detect_anomalies_iqr(df, metric_col)
-anomaly_count = int(anomaly_df["is_anomaly"].sum())
-
-if anomaly_count > 0:
-    st.warning(f"{anomaly_count} unusual records were detected in {metric_col}.")
-    st.dataframe(anomaly_df[anomaly_df["is_anomaly"]].head(20), use_container_width=True)
-else:
-    st.success("No major anomalies detected.")
 
 # -----------------------------
 # Anomaly Detection
@@ -869,6 +845,20 @@ if anomaly_count > 0:
     )
 else:
     st.success("No major anomalies detected.")
+
+# -----------------------------
+# Business Insight
+# -----------------------------
+st.subheader("🧠 Business Insight")
+
+if growth_pct is not None:
+    if growth_pct > 0:
+        st.success("Business performance is improving over time.")
+    else:
+        st.error("Business performance is declining and needs attention.")
+
+if anomaly_pct > 5:
+    st.warning("High anomaly rate detected — investigate data quality or unusual events.")
 
 # -----------------------------
 # Visual analysis
