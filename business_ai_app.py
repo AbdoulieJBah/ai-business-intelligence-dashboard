@@ -461,7 +461,7 @@ if df_raw is None:
 
 df_raw = normalize_columns(df_raw)
 
-df_raw["generated_date"] = pd.date_range(start="2024-01-01", periods=len(df), freq="D")
+df_raw["generated_date"] = pd.date_range(start="2024-01-01", periods=len(df_raw), freq="D")
 time_col = "generated_date"
     
 
