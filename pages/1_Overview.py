@@ -12,6 +12,19 @@ from utils import (
 st.set_page_config(page_title="Overview", page_icon="📊", layout="wide")
 inject_css()
 
+st.markdown("""
+<div class="hero-card">
+    <div class="hero-badge">Overview</div>
+    <div class="hero-title">📊 Upload and Explore</div>
+    <div class="hero-subtitle">
+        Load a dataset, configure your core metric, and generate decision-ready insights.
+    </div>
+    <div class="hero-muted">
+        Supports sales, finance, and customer review datasets.
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
 section_title("📊 Overview", "Upload data, configure metrics, and review KPIs.")
 
 data_source = st.radio("Choose data source", ["Upload file", "Use demo dataset"], horizontal=True)
