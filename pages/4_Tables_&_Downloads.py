@@ -2,6 +2,10 @@ import streamlit as st
 import pandas as pd
 
 from utils import inject_css, section_title, card_open, card_close
+
+st.set_page_config(page_title="Tables & Downloads", page_icon="📥", layout="wide")
+inject_css()
+
 if "dashboard_df" not in st.session_state:
     st.markdown("""
     <div class="empty-state">
@@ -14,12 +18,6 @@ if "dashboard_df" not in st.session_state:
 
     if st.button("Go to Overview"):
         st.switch_page("pages/1_Overview.py")
-    st.stop()
-st.set_page_config(page_title="Tables & Downloads", page_icon="📥", layout="wide")
-inject_css()
-
-if "dashboard_df" not in st.session_state:
-    st.warning("Go to the Overview page first and upload a dataset.")
     st.stop()
 
 df = st.session_state["dashboard_df"]
@@ -38,32 +36,66 @@ avg_metric = st.session_state["dashboard_avg_metric"]
 max_metric = df[metric_col].max()
 min_metric = df[metric_col].min()
 
+st.markdown("""
+<div class="hero-card">
+    <div class="hero-badge">Tables & Downloads</div>
+    <div class="hero-title">📥 Data Tables & Export Center</div>
+    <div class="hero-subtitle">
+        Inspect cleaned records, review category summaries, and export reports.
+    </div>
+    <div class="hero-muted">
+        This page gives you direct access to processed data outputs and downloadable files.
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
 card_open()
-section_title("📋 Detailed Tables")
+section_title("📋 Detailed Tables", "Review top records, bottom records, and grouped category summaries.")
 
 left, right = st.columns(2)
+
 with left:
     st.markdown("#### Top 10 Rows by Main Metric")
-    st.dataframe(df.sort_values(metric_col, ascending=False).head(10), use_container_width=True)
+    st.dataframe(
+        df.sort_values(metric_col, ascending=False).head(10),
+        width="stretch"
+    )
 
 with right:
     st.markdown("#### Bottom 10 Rows by Main Metric")
-    st.dataframe(df.sort_values(metric_col, ascending=True).head(10), use_container_width=True)
+    st.dataframe(
+        df.sort_values(metric_col, ascending=True).head(10),
+        width="stretch"
+    )
 
-if category_col != "None" and category_col in df.columns and (df[category_col].dtype == "object" or str(df[category_col].dtype).startswith("category")):
+if (
+    category_col != "None"
+    and category_col in df.columns
+    and category_col != metric_col
+    and (df[category_col].dtype == "object" or str(df[category_col].dtype).startswith("category"))
+):
     st.markdown("#### Category Summary")
     cat_summary = (
-        df.groupby(category_col)[metric_col]
+        df.groupby(category_col, as_index=False)[metric_col]
         .agg(["sum", "mean", "count"])
-        .sort_values("sum", ascending=False)
-        .reset_index()
     )
+
+    cat_summary = cat_summary.reset_index()
+
+    if "level_0" in cat_summary.columns:
+        cat_summary = cat_summary.drop(columns=["level_0"])
+
     cat_summary.columns = [category_col, f"Total {metric_col}", f"Average {metric_col}", "Records"]
-    st.dataframe(cat_summary, use_container_width=True)
+    cat_summary = cat_summary.sort_values(f"Total {metric_col}", ascending=False)
+
+    st.dataframe(cat_summary, width="stretch")
+elif category_col == metric_col:
+    st.warning("Category summary is unavailable because the category and main metric are the same column.")
+
 card_close()
 
 card_open()
-section_title("📥 Downloads")
+section_title("📥 Downloads", "Export cleaned data and summary outputs.")
 
 summary_rows = [
     ["Main Metric", metric_col],
@@ -102,6 +134,7 @@ if time_col in download_df.columns:
         pass
 
 d1, d2 = st.columns(2)
+
 with d1:
     st.download_button(
         "📥 Download Cleaned Data",
@@ -109,6 +142,7 @@ with d1:
         file_name="cleaned_business_data.csv",
         mime="text/csv"
     )
+
 with d2:
     st.download_button(
         "📥 Download Summary Report",
@@ -116,4 +150,5 @@ with d2:
         file_name="business_summary_report.csv",
         mime="text/csv"
     )
+
 card_close()
