@@ -3,6 +3,19 @@ import pandas as pd
 import plotly.express as px
 
 from utils import inject_css, section_title, card_open, card_close, apply_plotly_theme, build_tfidf_keywords, cluster_reviews, get_word_counts, basic_stopwords
+if "dashboard_df_raw" not in st.session_state:
+    st.markdown("""
+    <div class="empty-state">
+        <div class="empty-title">🧠 No text dataset loaded yet</div>
+        <div class="empty-text">
+            Upload your dataset in the Overview page first to explore sentiment, keywords, and review clusters.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    if st.button("Go to Overview"):
+        st.switch_page("pages/1_Overview.py")
+    st.stop()
 
 st.set_page_config(page_title="NLP Insights", page_icon="🧠", layout="wide")
 inject_css()
