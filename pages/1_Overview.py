@@ -43,6 +43,11 @@ else:
 if df_raw is None:
     st.stop()
 
+if data_source == "Upload file":
+    st.success("Dataset loaded successfully.")
+else:
+    st.info("Demo dataset loaded successfully.")
+
 state = prepare_state(df_raw)
 df_raw = state["df_raw"]
 
@@ -59,7 +64,7 @@ h3.metric("Missing Values", int(df_raw.isna().sum().sum()))
 h4.metric("Duplicate Rows", int(df_raw.duplicated().sum()))
 h5.metric("Numeric Columns", len(df_raw.select_dtypes(include="number").columns))
 with st.expander("Preview Raw Data"):
-    st.dataframe(df_raw.head(20), use_container_width=True)
+    st.dataframe(df_raw.head(20), width="stretch")
 card_close()
 
 numeric_candidates = state["numeric_candidates"]
@@ -73,7 +78,10 @@ suggested_cost = state["suggested_cost"]
 suggested_quantity = state["suggested_quantity"]
 category_candidates = state["category_candidates"]
 
+st.session_state["dashboard_category_candidates"] = category_candidates
+
 st.sidebar.markdown("### Configuration")
+
 metric_col = st.sidebar.selectbox(
     "Main metric",
     numeric_candidates,
@@ -84,12 +92,31 @@ date_options = ["generated_date"] + [col for col in df_raw.columns if col != "ge
 date_col = st.sidebar.selectbox("Date column", date_options, index=0)
 
 other_options = ["None"] + df_raw.columns.tolist()
-profit_col = st.sidebar.selectbox("Profit column (optional)", other_options, index=other_options.index(suggested_profit) if suggested_profit in other_options else 0)
-cost_col = st.sidebar.selectbox("Cost/Expense column (optional)", other_options, index=other_options.index(suggested_cost) if suggested_cost in other_options else 0)
-quantity_col = st.sidebar.selectbox("Quantity column (optional)", other_options, index=other_options.index(suggested_quantity) if suggested_quantity in other_options else 0)
+
+profit_col = st.sidebar.selectbox(
+    "Profit column (optional)",
+    other_options,
+    index=other_options.index(suggested_profit) if suggested_profit in other_options else 0
+)
+
+cost_col = st.sidebar.selectbox(
+    "Cost/Expense column (optional)",
+    other_options,
+    index=other_options.index(suggested_cost) if suggested_cost in other_options else 0
+)
+
+quantity_col = st.sidebar.selectbox(
+    "Quantity column (optional)",
+    other_options,
+    index=other_options.index(suggested_quantity) if suggested_quantity in other_options else 0
+)
 
 category_options = ["None"] + sorted(list(dict.fromkeys(category_candidates)))
-category_col = st.sidebar.selectbox("Primary category", category_options, index=1 if len(category_options) > 1 else 0)
+category_col = st.sidebar.selectbox(
+    "Primary category",
+    category_options,
+    index=1 if len(category_options) > 1 else 0
+)
 
 secondary_candidates = ["None"] + [c for c in category_candidates if c != category_col]
 second_category_col = st.sidebar.selectbox("Secondary category", secondary_candidates)
@@ -98,11 +125,17 @@ df = df_raw.copy()
 df = clean_numeric(df, metric_col)
 df = df.dropna(subset=[metric_col])
 
+if df.empty:
+    st.error("No valid values found in the selected main metric.")
+    st.stop()
+
 has_real_date = False
 time_col = None
 
-df = parse_date(df, date_col)
-if df[date_col].notna().sum() > 0:
+if date_col in df.columns:
+    df = parse_date(df, date_col)
+
+if date_col in df.columns and df[date_col].notna().sum() > 0:
     df = df.dropna(subset=[date_col]).sort_values(date_col)
     has_real_date = True
     time_col = date_col
@@ -168,6 +201,7 @@ card_close()
 card_open()
 section_title("💡 Recommendations", "Action-oriented suggestions based on detected patterns.")
 recommendations = recommendation_text(latest_metric, avg_metric, slope, metric_col)
+
 if growth_pct is not None and slope is not None:
     if slope > 0 and growth_pct > 0:
         recommendations.append("Strong upward trend confirmed by both recent growth and forecast direction.")
@@ -175,6 +209,7 @@ if growth_pct is not None and slope is not None:
         recommendations.append("Consistent downward trend detected in both recent growth and forecast direction.")
     else:
         recommendations.append("Mixed signals detected: recent growth and forecast trend are not fully aligned.")
+
 for rec in recommendations:
     st.markdown(f"<div class='info-card'>{rec}</div>", unsafe_allow_html=True)
 card_close()
@@ -184,12 +219,13 @@ section_title("🚨 Anomaly Detection", "Detect unusual records using the IQR me
 anomaly_df = detect_anomalies_iqr(df, metric_col)
 anomaly_count = int(anomaly_df["is_anomaly"].sum())
 anomaly_pct = (anomaly_count / len(anomaly_df)) * 100 if len(anomaly_df) > 0 else 0
+
 st.session_state["dashboard_anomaly_df"] = anomaly_df
 st.session_state["dashboard_anomaly_pct"] = anomaly_pct
 
 if anomaly_count > 0:
     st.warning(f"{anomaly_count} unusual records were detected in {metric_col} ({anomaly_pct:.2f}% of data).")
-    st.dataframe(anomaly_df[anomaly_df["is_anomaly"]].head(20), use_container_width=True)
+    st.dataframe(anomaly_df[anomaly_df["is_anomaly"]].head(20), width="stretch")
 else:
     st.success("No major anomalies detected.")
 card_close()
