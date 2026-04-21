@@ -2,6 +2,19 @@ import streamlit as st
 import plotly.express as px
 
 from utils import inject_css, section_title, card_open, card_close, apply_plotly_theme, fmt_num
+if "dashboard_df" not in st.session_state:
+    st.markdown("""
+    <div class="empty-state">
+        <div class="empty-title">📂 No dataset loaded yet</div>
+        <div class="empty-text">
+            Upload your file in the Overview page first to unlock forecasting and trend analysis.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    if st.button("Go to Overview"):
+        st.switch_page("pages/1_Overview.py")
+    st.stop()
 
 st.set_page_config(page_title="Forecasting", page_icon="🔮", layout="wide")
 inject_css()
