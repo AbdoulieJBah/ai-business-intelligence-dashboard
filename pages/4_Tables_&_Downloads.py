@@ -21,7 +21,7 @@ if "dashboard_df" not in st.session_state:
         st.switch_page("pages/1_Overview.py")
     st.stop()
 
-df = st.session_state["dashboard_df"]
+df = st.session_state["dashboard_df"].copy()
 metric_col = st.session_state["dashboard_metric_col"]
 category_col = st.session_state["dashboard_category_col"]
 time_col = st.session_state["dashboard_time_col"]
@@ -53,17 +53,10 @@ st.markdown("""
 card_open()
 section_title("📋 Detailed Tables", "Review top records, bottom records, and grouped category summaries.")
 
-# Debug check
-# st.write("category_col =", category_col)
-# st.write("metric_col =", metric_col)
+# Category analysis
+if category_col != "None" and category_col in df.columns and category_col != metric_col:
+    df[category_col] = df[category_col].astype(str)
 
-# Show category first so it is visible immediately
-if (
-    category_col != "None"
-    and category_col in df.columns
-    and category_col != metric_col
-    and (df[category_col].dtype == "object" or str(df[category_col].dtype).startswith("category"))
-):
     st.markdown("#### Category Summary")
 
     cat_summary = (
