@@ -11,6 +11,7 @@ from sklearn.cluster import KMeans
 def inject_css():
     st.markdown("""
     <style>
+
     .stApp {
         background: linear-gradient(180deg, #0b1220 0%, #111827 100%);
         color: #f8fafc;
@@ -27,14 +28,11 @@ def inject_css():
     h1, h2, h3, h4, h5, h6 {
         color: #f8fafc !important;
     }
-    .section-subtitle {
-    color: #cbd5e1;
-    font-size: 0.96rem;
-    margin-bottom: 1rem;
-}
+
     [data-testid="stMarkdownContainer"] {
-    color: #e5e7eb;
-}
+        color: #e5e7eb;
+    }
+
     .block-container {
         padding-top: 1.2rem;
         padding-bottom: 2rem;
@@ -98,7 +96,7 @@ def inject_css():
     }
 
     .section-subtitle {
-        color: #94a3b8;
+        color: #cbd5e1;
         font-size: 0.96rem;
         margin-bottom: 1rem;
     }
@@ -443,9 +441,9 @@ def clean_text(text):
     if pd.isna(text):
         return ""
     text = str(text).lower()
-    text = re.sub(r"http\\S+|www\\S+", "", text)
-    text = re.sub(r"[^a-zA-Z\\s]", " ", text)
-    text = re.sub(r"\\s+", " ", text).strip()
+    text = re.sub(r"http\S+|www\S+", "", text)
+    text = re.sub(r"[^a-zA-Z\s]", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
     return text
 
 
