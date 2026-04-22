@@ -40,6 +40,11 @@ def inject_css():
     opacity: 0.95;
 }
 
+    a:hover {
+    transform: translateY(-2px);
+    opacity: 0.9;
+}
+
     .stApp {
         background: linear-gradient(180deg, #0b1220 0%, #111827 100%);
         color: #f8fafc;
