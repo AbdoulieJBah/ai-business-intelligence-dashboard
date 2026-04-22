@@ -45,7 +45,6 @@ if st.button("Open Overview", key="go_overview", width="stretch"):
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-
 # -------- FORECASTING --------
 st.markdown("""
 <div class="mini-card">
@@ -58,7 +57,6 @@ if st.button("Open Forecasting", key="go_forecasting", width="stretch"):
     st.switch_page("pages/2_Forecasting.py")
 
 st.markdown("<br>", unsafe_allow_html=True)
-
 
 # -------- NLP --------
 st.markdown("""
@@ -73,7 +71,6 @@ if st.button("Open NLP Insights", key="go_nlp", width="stretch"):
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-
 # -------- TABLES --------
 st.markdown("""
 <div class="mini-card">
@@ -84,5 +81,3 @@ st.markdown("""
 
 if st.button("Open Tables & Downloads", key="go_tables", width="stretch"):
     st.switch_page("pages/4_Tables_&_Downloads.py")
-</div>
-""", unsafe_allow_html=True)
