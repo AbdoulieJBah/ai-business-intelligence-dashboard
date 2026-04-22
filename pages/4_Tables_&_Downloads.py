@@ -1,5 +1,7 @@
 import streamlit as st
 import pandas as pd
+import plotly.express as px
+from utils import inject_css, section_title, card_open, card_close, apply_plotly_theme
 
 from utils import inject_css, section_title, card_open, card_close
 
@@ -75,20 +77,48 @@ if (
     and (df[category_col].dtype == "object" or str(df[category_col].dtype).startswith("category"))
 ):
     st.markdown("#### Category Summary")
+
     cat_summary = (
-        df.groupby(category_col, as_index=False)[metric_col]
+        df.groupby(category_col)[metric_col]
         .agg(["sum", "mean", "count"])
+        .sort_values("sum", ascending=False)
+        .reset_index()
     )
 
-    cat_summary = cat_summary.reset_index()
-
-    if "level_0" in cat_summary.columns:
-        cat_summary = cat_summary.drop(columns=["level_0"])
-
-    cat_summary.columns = [category_col, f"Total {metric_col}", f"Average {metric_col}", "Records"]
-    cat_summary = cat_summary.sort_values(f"Total {metric_col}", ascending=False)
+    cat_summary.columns = [
+        category_col,
+        f"Total {metric_col}",
+        f"Average {metric_col}",
+        "Records"
+    ]
 
     st.dataframe(cat_summary, width="stretch")
+
+    st.markdown("#### Category Visual Analysis")
+
+    category_chart_df = (
+        df.groupby(category_col, as_index=False)[metric_col]
+        .sum()
+        .sort_values(metric_col, ascending=False)
+        .head(10)
+    )
+
+    fig = px.bar(
+        category_chart_df,
+        x=category_col,
+        y=metric_col,
+        title=f"{metric_col} by {category_col}",
+        text_auto=".2s"
+    )
+
+    fig = apply_plotly_theme(fig, 420)
+    fig.update_layout(
+        xaxis_title=category_col,
+        yaxis_title=f"Total {metric_col}"
+    )
+
+    st.plotly_chart(fig, width="stretch")
+
 elif category_col == metric_col:
     st.warning("Category summary is unavailable because the category and main metric are the same column.")
 
