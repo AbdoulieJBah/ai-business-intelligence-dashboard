@@ -96,52 +96,49 @@ st.markdown("""
 ">
 
     <div style="
-        font-size:1.05rem;
-        color:#e5e7eb;
-        margin-bottom:6px;
-    ">
-        Built by <strong style="color:#3b82f6;">Abdoulie J Bah</strong> 🚀
-    </div>
+    font-size:1.05rem;
+    color:#e5e7eb;
+    margin-bottom:6px;
+">
+    Built by <strong style="color:#3b82f6;">Abdoulie J Bah</strong> 🚀
+</div>
 
-    <div style="
-        font-size:0.9rem;
-        color:#94a3b8;
-        margin-bottom:12px;
-    ">
-        AI Engineer • Data Scientist • Business Intelligence Developer
-    </div>
+<div style="
+    font-size:0.9rem;
+    color:#94a3b8;
+    margin-bottom:12px;
+">
+    AI Engineer • Data Scientist • Business Intelligence Developer
+</div>
 
-    <div style="display:flex; justify-content:center; gap:10px; flex-wrap:wrap;">
+<div style="display:flex; justify-content:center; gap:10px; flex-wrap:wrap;">
 
-        <a href="www.linkedin.com/in/abdoulie-j-bah-b71263244" target="_blank" style="
-            text-decoration:none;
-            padding:8px 14px;
-            border-radius:10px;
-            background:#0ea5e9;
-            color:white;
-            font-weight:600;
-        ">LinkedIn</a>
+    <a href="https://www.linkedin.com/in/abdoulie-j-bah-b71263244" target="_blank" style="
+        text-decoration:none;
+        padding:8px 14px;
+        border-radius:10px;
+        background:#0ea5e9;
+        color:white;
+        font-weight:600;
+    ">LinkedIn</a>
 
-        <a href="https://github.com/AbdoulieJBah/ai-business-intelligence-dashboard" target="_blank" style="
-            text-decoration:none;
-            padding:8px 14px;
-            border-radius:10px;
-            background:#1f2937;
-            color:white;
-            font-weight:600;
-            border:1px solid rgba(255,255,255,0.1);
-        ">GitHub</a>
+    <a href="https://github.com/AbdoulieJBah/ai-business-intelligence-dashboard" target="_blank" style="
+        text-decoration:none;
+        padding:8px 14px;
+        border-radius:10px;
+        background:#1f2937;
+        color:white;
+        font-weight:600;
+        border:1px solid rgba(255,255,255,0.1);
+    ">GitHub</a>
 
-        <a href="21722285bah@gmail.com" style="
-            text-decoration:none;
-            padding:8px 14px;
-            border-radius:10px;
-            background:#2563eb;
-            color:white;
-            font-weight:600;
-        ">Contact</a>
-
-    </div>
+    <a href="mailto:21722285bah@gmail.com" style="
+        text-decoration:none;
+        padding:8px 14px;
+        border-radius:10px;
+        background:#2563eb;
+        color:white;
+        font-weight:600;
+    ">Contact</a>
 
 </div>
-""", unsafe_allow_html=True)
