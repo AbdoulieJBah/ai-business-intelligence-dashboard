@@ -19,21 +19,25 @@ def inject_css():
     }
 
     .stButton button {
-    border-radius: 14px;
+    border-radius: 16px;
     font-weight: 700;
-    padding: 0.75rem 1rem;
-    border: 1px solid rgba(59,130,246,0.28);
+    padding: 0.8rem 1.2rem;
+    border: 1px solid rgba(59,130,246,0.35);
     background: linear-gradient(135deg, #1d4ed8, #2563eb);
     color: white !important;
-    box-shadow: 0 8px 24px rgba(37,99,235,0.22);
-    margin-top: 0.55rem;
-    margin-bottom: 1rem;
+    box-shadow: 0 10px 30px rgba(37,99,235,0.35);
+    transition: all 0.25s ease;
 }
 
 .stButton button:hover {
-    border: 1px solid rgba(96,165,250,0.55);
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 15px 40px rgba(37,99,235,0.55);
+    border: 1px solid rgba(96,165,250,0.65);
     background: linear-gradient(135deg, #2563eb, #3b82f6);
-    color: white !important;
+}
+
+    .stButton button {
+    opacity: 0.95;
 }
 
     .stApp {
@@ -120,6 +124,14 @@ def inject_css():
         margin-bottom: 1rem;
     }
 
+    .section-divider {
+    height: 6px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #1d4ed8, #3b82f6);
+    margin: 20px 0;
+    opacity: 0.4;
+}
+
     .premium-card {
         background: linear-gradient(180deg, rgba(17,24,39,0.95), rgba(15,23,42,0.95));
         border: 1px solid rgba(255,255,255,0.06);
@@ -130,12 +142,22 @@ def inject_css():
     }
 
     .mini-card {
-        background: linear-gradient(180deg, rgba(30,41,59,0.75), rgba(17,24,39,0.88));
-        border: 1px solid rgba(255,255,255,0.07);
-        border-radius: 18px;
-        padding: 18px;
-        min-height: 120px;
-    }
+    background: rgba(30,41,59,0.55);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 20px;
+    padding: 20px;
+    margin-bottom: 14px;
+    transition: all 0.25s ease;
+    cursor: pointer;
+}
+
+.mini-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 45px rgba(0,0,0,0.35);
+    border: 1px solid rgba(59,130,246,0.35);
+}
 
     .info-card {
         background: rgba(59,130,246,0.08);
