@@ -1,9 +1,8 @@
-import plotly.express as px
-from utils import inject_css, section_title, card_open, card_close, apply_plotly_theme
 import streamlit as st
 import pandas as pd
+import plotly.express as px
 
-from utils import inject_css, section_title, card_open, card_close
+from utils import inject_css, section_title, card_open, card_close, apply_plotly_theme
 
 st.set_page_config(page_title="Tables & Downloads", page_icon="📥", layout="wide")
 inject_css()
@@ -54,22 +53,11 @@ st.markdown("""
 card_open()
 section_title("📋 Detailed Tables", "Review top records, bottom records, and grouped category summaries.")
 
-left, right = st.columns(2)
+# Debug check
+# st.write("category_col =", category_col)
+# st.write("metric_col =", metric_col)
 
-with left:
-    st.markdown("#### Top 10 Rows by Main Metric")
-    st.dataframe(
-        df.sort_values(metric_col, ascending=False).head(10),
-        width="stretch"
-    )
-
-with right:
-    st.markdown("#### Bottom 10 Rows by Main Metric")
-    st.dataframe(
-        df.sort_values(metric_col, ascending=True).head(10),
-        width="stretch"
-    )
-
+# Show category first so it is visible immediately
 if (
     category_col != "None"
     and category_col in df.columns
@@ -121,6 +109,24 @@ if (
 
 elif category_col == metric_col:
     st.warning("Category summary is unavailable because the category and main metric are the same column.")
+else:
+    st.info("No valid category column is available for category analysis.")
+
+left, right = st.columns(2)
+
+with left:
+    st.markdown("#### Top 10 Rows by Main Metric")
+    st.dataframe(
+        df.sort_values(metric_col, ascending=False).head(10),
+        width="stretch"
+    )
+
+with right:
+    st.markdown("#### Bottom 10 Rows by Main Metric")
+    st.dataframe(
+        df.sort_values(metric_col, ascending=True).head(10),
+        width="stretch"
+    )
 
 card_close()
 
@@ -151,7 +157,7 @@ if cost_col != "None" and cost_col in df.columns:
 if quantity_col != "None" and quantity_col in df.columns:
     summary_rows.append(["Total Quantity", round(df[quantity_col].sum(skipna=True), 2)])
 
-if margin_available:
+if margin_available and "Computed_Margin_Percent" in df.columns:
     summary_rows.append(["Average Margin %", round(df["Computed_Margin_Percent"].mean(skipna=True), 2)])
 
 summary_df = pd.DataFrame(summary_rows, columns=["Metric", "Value"])
