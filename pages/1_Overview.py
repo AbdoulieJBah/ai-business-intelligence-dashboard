@@ -27,46 +27,112 @@ st.markdown("""
 
 section_title("📊 Overview", "Upload data, configure metrics, and review KPIs.")
 
-data_source = st.radio("Choose data source", ["Upload file", "Use demo dataset"], horizontal=True)
+# -----------------------------
+# Persistent data source choice
+# -----------------------------
+if "data_source" not in st.session_state:
+    st.session_state["data_source"] = "Upload file"
+
+data_source = st.radio(
+    "Choose data source",
+    ["Upload file", "Use demo dataset"],
+    horizontal=True,
+    key="data_source"
+)
 
 df_raw = None
+
+# -----------------------------
+# Upload / restore dataset
+# -----------------------------
 if data_source == "Upload file":
-    uploaded_file = st.file_uploader("Upload CSV or Excel file", type=["csv", "xlsx"])
+    uploaded_file = st.file_uploader(
+        "Upload CSV or Excel file",
+        type=["csv", "xlsx"],
+        key="main_uploader"
+    )
+
     if uploaded_file is not None:
-        if uploaded_file.name.lower().endswith(".csv"):
-            df_raw = load_csv(uploaded_file)
-        else:
-            df_raw = load_excel(uploaded_file)
+        try:
+            if uploaded_file.name.lower().endswith(".csv"):
+                df_raw = load_csv(uploaded_file)
+            else:
+                df_raw = load_excel(uploaded_file)
+
+            st.session_state["uploaded_df_raw"] = df_raw.copy()
+            st.session_state["uploaded_filename"] = uploaded_file.name
+            st.success(f"Loaded: {uploaded_file.name}")
+
+        except Exception as e:
+            st.error(f"Could not read the file: {e}")
+            st.stop()
+
+    elif "uploaded_df_raw" in st.session_state:
+        df_raw = st.session_state["uploaded_df_raw"].copy()
+        st.info(f"Using previously uploaded file: {st.session_state.get('uploaded_filename', 'dataset')}")
+
 else:
     df_raw = load_demo_data()
+    st.session_state["uploaded_df_raw"] = df_raw.copy()
+    st.session_state["uploaded_filename"] = "Demo dataset"
+    st.info("Using demo dataset.")
 
 if df_raw is None:
     st.stop()
 
-if data_source == "Upload file":
-    st.success("Dataset loaded successfully.")
-else:
-    st.info("Demo dataset loaded successfully.")
+# -----------------------------
+# Clear dataset button
+# -----------------------------
+if st.button("Clear current dataset"):
+    keys_to_remove = [
+        "uploaded_df_raw", "uploaded_filename",
+        "dashboard_df_raw", "dashboard_df",
+        "dashboard_text_col", "dashboard_title_col",
+        "dashboard_metric_col", "dashboard_time_col",
+        "dashboard_category_col", "dashboard_second_category_col",
+        "dashboard_profit_col", "dashboard_cost_col", "dashboard_quantity_col",
+        "dashboard_margin_available", "dashboard_prediction",
+        "dashboard_prediction_lr", "dashboard_prediction_ma",
+        "dashboard_slope", "dashboard_total_metric",
+        "dashboard_avg_metric", "dashboard_max_metric",
+        "dashboard_latest_metric", "dashboard_growth_pct",
+        "dashboard_anomaly_df", "dashboard_anomaly_pct"
+    ]
+    for key in keys_to_remove:
+        st.session_state.pop(key, None)
+    st.rerun()
 
+# -----------------------------
+# Prepare state
+# -----------------------------
 state = prepare_state(df_raw)
 df_raw = state["df_raw"]
 
-st.session_state["dashboard_df_raw"] = df_raw
+st.session_state["dashboard_df_raw"] = df_raw.copy()
 st.session_state["dashboard_text_col"] = state["text_col"]
 st.session_state["dashboard_title_col"] = state["title_col"]
 
+# -----------------------------
+# Dataset Health Check
+# -----------------------------
 card_open()
 section_title("📋 Dataset Health Check", "Quick overview of the uploaded data quality.")
+
 h1, h2, h3, h4, h5 = st.columns(5)
 h1.metric("Rows", len(df_raw))
 h2.metric("Columns", len(df_raw.columns))
 h3.metric("Missing Values", int(df_raw.isna().sum().sum()))
 h4.metric("Duplicate Rows", int(df_raw.duplicated().sum()))
 h5.metric("Numeric Columns", len(df_raw.select_dtypes(include="number").columns))
+
 with st.expander("Preview Raw Data"):
     st.dataframe(df_raw.head(20), width="stretch")
+
 card_close()
 
+# -----------------------------
+# Automatic suggestions
+# -----------------------------
 numeric_candidates = state["numeric_candidates"]
 if not numeric_candidates:
     st.error("No numeric business columns were found in this dataset.")
@@ -78,8 +144,9 @@ suggested_cost = state["suggested_cost"]
 suggested_quantity = state["suggested_quantity"]
 category_candidates = state["category_candidates"]
 
-st.session_state["dashboard_category_candidates"] = category_candidates
-
+# -----------------------------
+# Sidebar config
+# -----------------------------
 st.sidebar.markdown("### Configuration")
 
 metric_col = st.sidebar.selectbox(
@@ -121,6 +188,9 @@ category_col = st.sidebar.selectbox(
 secondary_candidates = ["None"] + [c for c in category_candidates if c != category_col]
 second_category_col = st.sidebar.selectbox("Secondary category", secondary_candidates)
 
+# -----------------------------
+# Prepare working df
+# -----------------------------
 df = df_raw.copy()
 df = clean_numeric(df, metric_col)
 df = df.dropna(subset=[metric_col])
@@ -132,9 +202,7 @@ if df.empty:
 has_real_date = False
 time_col = None
 
-if date_col in df.columns:
-    df = parse_date(df, date_col)
-
+df = parse_date(df, date_col)
 if date_col in df.columns and df[date_col].notna().sum() > 0:
     df = df.dropna(subset=[date_col]).sort_values(date_col)
     has_real_date = True
@@ -153,6 +221,9 @@ if profit_col != "None" and profit_col in df.columns:
     df["Computed_Margin_Percent"] = (df[profit_col] / nonzero_metric) * 100
     margin_available = True
 
+# -----------------------------
+# Forecast values
+# -----------------------------
 prediction_lr, slope = forecast_next_value(df[metric_col])
 prediction_ma = moving_average_forecast(df[metric_col], window=5)
 prediction = prediction_lr
@@ -163,7 +234,10 @@ max_metric = df[metric_col].max()
 latest_metric = df[metric_col].iloc[-1]
 growth_pct = safe_growth_percent(df[metric_col])
 
-st.session_state["dashboard_df"] = df
+# -----------------------------
+# Save to session state
+# -----------------------------
+st.session_state["dashboard_df"] = df.copy()
 st.session_state["dashboard_metric_col"] = metric_col
 st.session_state["dashboard_time_col"] = time_col
 st.session_state["dashboard_category_col"] = category_col
@@ -182,24 +256,38 @@ st.session_state["dashboard_max_metric"] = max_metric
 st.session_state["dashboard_latest_metric"] = latest_metric
 st.session_state["dashboard_growth_pct"] = growth_pct
 
+# -----------------------------
+# Executive Summary
+# -----------------------------
 card_open()
 section_title("📊 Executive Summary", "High-level KPI view of the selected metric.")
+
 c1, c2, c3, c4, c5 = st.columns(5)
 c1.metric(f"Total {metric_col}", fmt_num(total_metric))
 c2.metric(f"Average {metric_col}", fmt_num(avg_metric))
 c3.metric(f"Highest {metric_col}", fmt_num(max_metric))
 c4.metric(f"Predicted Next {metric_col}", fmt_num(prediction) if prediction is not None else "N/A")
 c5.metric("Growth %", f"{growth_pct:.2f}%" if growth_pct is not None else "N/A")
+
 card_close()
 
+# -----------------------------
+# Automatic Summary
+# -----------------------------
 card_open()
 section_title("📝 Automatic Summary", "Automatically generated insights based on your selected data.")
+
 for line in generate_auto_summary(df, metric_col, category_col):
     st.markdown(f"<div class='info-card'>{line}</div>", unsafe_allow_html=True)
+
 card_close()
 
+# -----------------------------
+# Recommendations
+# -----------------------------
 card_open()
 section_title("💡 Recommendations", "Action-oriented suggestions based on detected patterns.")
+
 recommendations = recommendation_text(latest_metric, avg_metric, slope, metric_col)
 
 if growth_pct is not None and slope is not None:
@@ -212,15 +300,20 @@ if growth_pct is not None and slope is not None:
 
 for rec in recommendations:
     st.markdown(f"<div class='info-card'>{rec}</div>", unsafe_allow_html=True)
+
 card_close()
 
+# -----------------------------
+# Anomaly Detection
+# -----------------------------
 card_open()
 section_title("🚨 Anomaly Detection", "Detect unusual records using the IQR method.")
+
 anomaly_df = detect_anomalies_iqr(df, metric_col)
 anomaly_count = int(anomaly_df["is_anomaly"].sum())
 anomaly_pct = (anomaly_count / len(anomaly_df)) * 100 if len(anomaly_df) > 0 else 0
 
-st.session_state["dashboard_anomaly_df"] = anomaly_df
+st.session_state["dashboard_anomaly_df"] = anomaly_df.copy()
 st.session_state["dashboard_anomaly_pct"] = anomaly_pct
 
 if anomaly_count > 0:
@@ -228,4 +321,5 @@ if anomaly_count > 0:
     st.dataframe(anomaly_df[anomaly_df["is_anomaly"]].head(20), width="stretch")
 else:
     st.success("No major anomalies detected.")
+
 card_close()
