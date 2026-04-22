@@ -12,6 +12,30 @@ def inject_css():
     st.markdown("""
     <style>
 
+    .block-container {
+        padding-top: 1.2rem;
+        padding-bottom: 2rem;
+        max-width: 1250px;
+    }
+
+    .stButton button {
+    border-radius: 14px;
+    font-weight: 700;
+    padding: 0.75rem 1rem;
+    border: 1px solid rgba(59,130,246,0.28);
+    background: linear-gradient(135deg, #1d4ed8, #2563eb);
+    color: white !important;
+    box-shadow: 0 8px 24px rgba(37,99,235,0.22);
+    margin-top: 0.55rem;
+    margin-bottom: 1rem;
+}
+
+.stButton button:hover {
+    border: 1px solid rgba(96,165,250,0.55);
+    background: linear-gradient(135deg, #2563eb, #3b82f6);
+    color: white !important;
+}
+
     .stApp {
         background: linear-gradient(180deg, #0b1220 0%, #111827 100%);
         color: #f8fafc;
@@ -33,11 +57,6 @@ def inject_css():
         color: #e5e7eb;
     }
 
-    .block-container {
-        padding-top: 1.2rem;
-        padding-bottom: 2rem;
-        max-width: 1250px;
-    }
 
     section[data-testid="stSidebar"] {
         background: linear-gradient(180deg, #0b1220 0%, #111827 100%);
