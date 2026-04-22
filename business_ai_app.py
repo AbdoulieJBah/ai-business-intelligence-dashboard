@@ -9,6 +9,7 @@ st.set_page_config(
 
 inject_css()
 
+# ---------------- HERO ----------------
 st.markdown("""
 <div class="hero-card">
     <div class="hero-badge">AI Powered Analytics Suite</div>
@@ -22,14 +23,17 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+# ---------------- INFO ----------------
 st.markdown("""
 <div class="info-card">
     Use the buttons below to navigate between pages after uploading your dataset in the Overview page.
 </div>
 """, unsafe_allow_html=True)
 
+# ---------------- DIVIDER ----------------
 st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
 
+# ---------------- NAVIGATION ----------------
 st.markdown("## Dashboard Sections")
 
 # -------- OVERVIEW --------
@@ -82,6 +86,7 @@ st.markdown("""
 if st.button("Open Tables & Downloads", key="go_tables", width="stretch"):
     st.switch_page("pages/4_Tables_&_Downloads.py")
 
+# ---------------- FOOTER ----------------
 st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
 
 st.markdown("""
