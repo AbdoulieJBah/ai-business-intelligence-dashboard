@@ -11,6 +11,22 @@ from sklearn.cluster import KMeans
 def inject_css():
     st.markdown("""
     <style>
+    .stApp {
+        background: linear-gradient(180deg, #0b1220 0%, #111827 100%);
+        color: #f8fafc;
+    }
+
+    .main {
+        background: transparent;
+    }
+
+    p, label, div, span {
+        color: #e5e7eb;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+        color: #f8fafc !important;
+    }
     .block-container {
         padding-top: 1.2rem;
         padding-bottom: 2rem;
