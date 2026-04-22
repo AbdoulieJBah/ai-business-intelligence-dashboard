@@ -28,6 +28,8 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
+
 st.markdown("## Dashboard Sections")
 
 # -------- OVERVIEW --------
