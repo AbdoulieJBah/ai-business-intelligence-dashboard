@@ -27,6 +27,11 @@ def inject_css():
     h1, h2, h3, h4, h5, h6 {
         color: #f8fafc !important;
     }
+    .section-subtitle {
+    color: #cbd5e1;
+    font-size: 0.96rem;
+    margin-bottom: 1rem;
+}
     [data-testid="stMarkdownContainer"] {
     color: #e5e7eb;
 }
