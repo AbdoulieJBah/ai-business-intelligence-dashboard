@@ -1,7 +1,7 @@
-import streamlit as st
-import pandas as pd
 import plotly.express as px
 from utils import inject_css, section_title, card_open, card_close, apply_plotly_theme
+import streamlit as st
+import pandas as pd
 
 from utils import inject_css, section_title, card_open, card_close
 
